@@ -258,12 +258,47 @@ The timer is reset only after meaningful output is observed."
        (process-buffer process)
        input))))
 
+(defun ai-code-backends-infra--vterm-render-preserving-copy-mode-view (render-fn)
+  "Call RENDER-FN while keeping the user's `vterm-copy-mode' viewport stable."
+  (if (not (bound-and-true-p vterm-copy-mode))
+      (funcall render-fn)
+    (let ((point-marker (copy-marker (point) t))
+          (window-states
+           (mapcar (lambda (window)
+                     (list window
+                           (window-start window)
+                           (window-point window)))
+                   (get-buffer-window-list (current-buffer) nil t))))
+      (unwind-protect
+          (let ((inhibit-redisplay t))
+            (funcall render-fn))
+        (dolist (state window-states)
+          (pcase-let ((`(,window ,start ,window-point) state))
+            (when (window-live-p window)
+              (set-window-start window start t)
+              (set-window-point window window-point))))
+        (goto-char point-marker)
+        (set-marker point-marker nil)))))
+
+(defun ai-code-backends-infra--vterm-render-queued-output (orig-fun buffer)
+  "Render queued vterm output for BUFFER using ORIG-FUN."
+  (when (buffer-live-p buffer)
+    (with-current-buffer buffer
+      (setq ai-code-backends-infra--vterm-render-timer nil)
+      (when ai-code-backends-infra--vterm-render-queue
+        (let ((inhibit-redisplay t)
+              (data ai-code-backends-infra--vterm-render-queue))
+          (setq ai-code-backends-infra--vterm-render-queue nil)
+          (ai-code-backends-infra--vterm-render-preserving-copy-mode-view
+           (lambda ()
+             (funcall orig-fun (get-buffer-process buffer) data))))))))
+
 (defun ai-code-backends-infra--vterm-smart-renderer (orig-fun process input)
   "Smart rendering filter for optimized vterm display updates.
 Activity tracking for notifications is handled separately by
 `ai-code-backends-infra--vterm-notification-tracker'.
-Deferred rendering is suspended while `vterm-copy-mode' is active so that
-scrolling and copying are not disrupted by timer-driven redraws."
+When `vterm-copy-mode' is active, rendering preserves the current
+viewport so scrollback continues updating without yanking navigation."
   (if (or (not ai-code-backends-infra-vterm-anti-flicker)
           (not (ai-code-backends-infra--session-buffer-p (process-buffer process))))
       (funcall orig-fun process input)
@@ -274,32 +309,26 @@ scrolling and copying are not disrupted by timer-driven redraws."
              (cr-count (cl-count ?\15 input))
              (escape-count (cl-count ?\033 input))
              (input-length (length input))
-             (escape-density (if (> input-length 0) (/ (float escape-count) input-length) 0)))
+             (escape-density (if (> input-length 0)
+                                 (/ (float escape-count) input-length)
+                               0)))
         (if (or complex-redraw-detected
                 (>= cr-count 2)
                 (and (> escape-density 0.3) (>= clear-count 2))
-                ai-code-backends-infra--vterm-render-queue
-                (bound-and-true-p vterm-copy-mode))
-            (progn
+                ai-code-backends-infra--vterm-render-queue)
+            (let ((buffer (current-buffer)))
               (setq ai-code-backends-infra--vterm-render-queue
                     (concat ai-code-backends-infra--vterm-render-queue input))
               (when ai-code-backends-infra--vterm-render-timer
                 (cancel-timer ai-code-backends-infra--vterm-render-timer))
               (setq ai-code-backends-infra--vterm-render-timer
                     (run-at-time ai-code-backends-infra-vterm-render-delay nil
-                                 (lambda (buf)
-                                   (when (buffer-live-p buf)
-                                     (with-current-buffer buf
-                                       ;; Clear timer reference regardless of whether we render.
-                                       (setq ai-code-backends-infra--vterm-render-timer nil)
-                                       (when (and ai-code-backends-infra--vterm-render-queue
-                                                  (not (bound-and-true-p vterm-copy-mode)))
-                                         (let ((inhibit-redisplay t)
-                                               (data ai-code-backends-infra--vterm-render-queue))
-                                           (setq ai-code-backends-infra--vterm-render-queue nil)
-                                           (funcall orig-fun (get-buffer-process buf) data))))))
-                                 (current-buffer))))
-          (funcall orig-fun process input))))))
+                                 #'ai-code-backends-infra--vterm-render-queued-output
+                                 orig-fun
+                                 buffer)))
+          (ai-code-backends-infra--vterm-render-preserving-copy-mode-view
+           (lambda ()
+             (funcall orig-fun process input))))))))
 
 (defun ai-code-backends-infra--vterm-flush-on-copy-mode-exit ()
   "Flush any pending render queue when exiting `vterm-copy-mode'.

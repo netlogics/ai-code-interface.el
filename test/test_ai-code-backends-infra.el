@@ -1150,16 +1150,20 @@
       (when (buffer-live-p buffer)
         (kill-buffer buffer)))))
 
-(ert-deftest test-ai-code-backends-infra-vterm-smart-renderer-queues-in-copy-mode ()
-  "Incoming vterm data is queued (not rendered) while vterm-copy-mode is active."
+(ert-deftest test-ai-code-backends-infra-vterm-smart-renderer-renders-in-copy-mode ()
+  "Incoming vterm data should still render while `vterm-copy-mode' is active."
   (with-temp-buffer
     (rename-buffer "*testclaude[test-dir]*" t)
     (setq-local ai-code-backends-infra--vterm-render-queue nil)
     (setq-local ai-code-backends-infra--vterm-render-timer nil)
-    ;; Simulate vterm-copy-mode being active.
     (setq-local vterm-copy-mode t)
+    (insert "before")
+    (goto-char (point-min))
     (let* ((rendered nil)
-           (orig-fun (lambda (_process input) (push input rendered)))
+           (orig-fun (lambda (_process input)
+                       (goto-char (point-max))
+                       (insert input)
+                       (push input rendered)))
            (mock-process 'mock-proc))
       (cl-letf (((symbol-function 'process-buffer)
                  (lambda (_proc) (current-buffer)))
@@ -1167,44 +1171,46 @@
                  (lambda (&rest _args) 'mock-timer))
                 ((symbol-function 'cancel-timer)
                  (lambda (&rest _args) nil)))
-        ;; Send simple input while in copy mode; should be queued.
         (ai-code-backends-infra--vterm-smart-renderer
          orig-fun mock-process "hello")
-        ;; Nothing rendered immediately.
-        (should (null rendered))
-        ;; Data is in the queue.
-        (should (equal ai-code-backends-infra--vterm-render-queue "hello"))))))
+        (should (equal rendered '("hello")))
+        (should (equal (buffer-string) "beforehello"))
+        (should (= (point) (point-min)))
+        (should-not ai-code-backends-infra--vterm-render-queue)))))
 
-(ert-deftest test-ai-code-backends-infra-vterm-smart-renderer-timer-skips-in-copy-mode ()
-  "Render timer does not flush the queue while vterm-copy-mode is active."
+(ert-deftest test-ai-code-backends-infra-vterm-smart-renderer-timer-renders-in-copy-mode ()
+  "Render timer should flush queued redraws while `vterm-copy-mode' is active."
   (with-temp-buffer
     (rename-buffer "*testclaude[test-dir2]*" t)
-    (setq-local ai-code-backends-infra--vterm-render-queue "pending-data")
+    (insert "before")
+    (goto-char (point-min))
+    (setq-local ai-code-backends-infra--vterm-render-queue nil)
     (setq-local ai-code-backends-infra--vterm-render-timer nil)
     (setq-local vterm-copy-mode t)
     (let* ((rendered nil)
-           (orig-fun (lambda (_process input) (push input rendered)))
+           (orig-fun (lambda (_process input)
+                       (goto-char (point-max))
+                       (insert input)
+                       (push input rendered)))
            (mock-process 'mock-proc)
            (captured-timer-fn nil))
       (cl-letf (((symbol-function 'process-buffer)
                  (lambda (_proc) (current-buffer)))
                 ((symbol-function 'run-at-time)
-                 (lambda (_delay _repeat fn buf)
-                   (setq captured-timer-fn (cons fn buf))
+                 (lambda (_delay _repeat fn &rest args)
+                   (setq captured-timer-fn (cons fn args))
                    'mock-timer))
                 ((symbol-function 'cancel-timer)
                  (lambda (&rest _args) nil)))
         (ai-code-backends-infra--vterm-smart-renderer
-         orig-fun mock-process "extra")
-        ;; Simulate the timer firing by calling the captured timer function.
+         orig-fun mock-process "\r\rqueued-data")
         (when captured-timer-fn
-          (funcall (car captured-timer-fn) (cdr captured-timer-fn)))
-        ;; Still in copy mode: nothing should have been rendered.
-        (should (null rendered))
-        ;; Timer reference cleared after firing.
+          (apply (car captured-timer-fn) (cdr captured-timer-fn)))
+        (should (equal rendered '("\r\rqueued-data")))
+        (should (equal (buffer-string) "before\r\rqueued-data"))
+        (should (= (point) (point-min)))
         (should (null ai-code-backends-infra--vterm-render-timer))
-        ;; Queue is preserved so it can be flushed when copy mode ends.
-        (should ai-code-backends-infra--vterm-render-queue)))))
+        (should-not ai-code-backends-infra--vterm-render-queue)))))
 
 (ert-deftest test-ai-code-backends-infra-vterm-flush-on-copy-mode-exit ()
   "Pending render queue is flushed when exiting vterm-copy-mode."
