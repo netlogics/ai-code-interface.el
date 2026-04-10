@@ -286,8 +286,7 @@ The timer is reset only after meaningful output is observed."
     (with-current-buffer buffer
       (setq ai-code-backends-infra--vterm-render-timer nil)
       (when ai-code-backends-infra--vterm-render-queue
-        (let ((inhibit-redisplay t)
-              (data ai-code-backends-infra--vterm-render-queue))
+        (let ((data ai-code-backends-infra--vterm-render-queue))
           (setq ai-code-backends-infra--vterm-render-queue nil)
           (ai-code-backends-infra--vterm-render-preserving-copy-mode-view
            (lambda ()

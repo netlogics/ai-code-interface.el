@@ -1161,6 +1161,7 @@
     (goto-char (point-min))
     (let* ((rendered nil)
            (orig-fun (lambda (_process input)
+                       ;; Mimic vterm rendering moving point to the live terminal end.
                        (goto-char (point-max))
                        (insert input)
                        (push input rendered)))
@@ -1189,6 +1190,7 @@
     (setq-local vterm-copy-mode t)
     (let* ((rendered nil)
            (orig-fun (lambda (_process input)
+                       ;; Mimic vterm rendering moving point to the live terminal end.
                        (goto-char (point-max))
                        (insert input)
                        (push input rendered)))
