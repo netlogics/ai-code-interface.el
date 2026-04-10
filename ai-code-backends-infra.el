@@ -263,8 +263,8 @@ The timer is reset only after meaningful output is observed."
   (if (not (bound-and-true-p vterm-copy-mode))
       (funcall render-fn)
     (let ((point-marker (copy-marker (point) t))
-          ;; Use an advancing marker so inserts at point restore the user's
-          ;; logical position after vterm appends fresh output there.
+          ;; Use an advancing marker so output inserted at the saved point
+          ;; keeps the restored position aligned with the user's viewport.
           (window-states
            (mapcar (lambda (window)
                      (list window
@@ -272,8 +272,8 @@ The timer is reset only after meaningful output is observed."
                            (window-point window)))
                    (get-buffer-window-list (current-buffer) nil t))))
       (unwind-protect
-          ;; Suppress intermediate redisplay until the saved viewport state is
-          ;; restored, avoiding visible jumps to the live terminal output.
+          ;; Suppress intermediate redisplay until restoring the captured
+          ;; viewport state, avoiding visible jumps to live terminal output.
           (let ((inhibit-redisplay t))
             (funcall render-fn))
         (dolist (state window-states)
