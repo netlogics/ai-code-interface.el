@@ -263,8 +263,8 @@ The timer is reset only after meaningful output is observed."
   (if (not (bound-and-true-p vterm-copy-mode))
       (funcall render-fn)
     (let ((point-marker (copy-marker (point) t))
-          ;; Use an insertion-type marker so inserts at point restore the
-          ;; user's logical position after vterm appends fresh output there.
+          ;; Use an advancing marker so inserts at point restore the user's
+          ;; logical position after vterm appends fresh output there.
           (window-states
            (mapcar (lambda (window)
                      (list window

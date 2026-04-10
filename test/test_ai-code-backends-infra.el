@@ -1159,7 +1159,8 @@
     (setq-local vterm-copy-mode t)
     (insert "before")
     (goto-char (point-min))
-    (let* ((rendered nil)
+    (let* ((original-point (point))
+           (rendered nil)
            (orig-fun (lambda (_process input)
                        ;; Mimic vterm rendering moving point to the live terminal end.
                        (goto-char (point-max))
@@ -1176,7 +1177,7 @@
          orig-fun mock-process "hello")
         (should (equal rendered '("hello")))
         (should (equal (buffer-string) "beforehello"))
-        (should (= (point) (point-min)))
+        (should (= (point) original-point))
         (should-not ai-code-backends-infra--vterm-render-queue)))))
 
 (ert-deftest test-ai-code-backends-infra-vterm-smart-renderer-timer-renders-in-copy-mode ()
@@ -1188,7 +1189,8 @@
     (setq-local ai-code-backends-infra--vterm-render-queue nil)
     (setq-local ai-code-backends-infra--vterm-render-timer nil)
     (setq-local vterm-copy-mode t)
-    (let* ((rendered nil)
+    (let* ((original-point (point))
+           (rendered nil)
            (orig-fun (lambda (_process input)
                        ;; Mimic vterm rendering moving point to the live terminal end.
                        (goto-char (point-max))
@@ -1210,7 +1212,7 @@
           (apply (car captured-timer-fn) (cdr captured-timer-fn)))
         (should (equal rendered '("\r\rqueued-data")))
         (should (equal (buffer-string) "before\r\rqueued-data"))
-        (should (= (point) (point-min)))
+        (should (= (point) original-point))
         (should (null ai-code-backends-infra--vterm-render-timer))
         (should-not ai-code-backends-infra--vterm-render-queue)))))
 
