@@ -43,6 +43,10 @@
   "Note: Please make the code change described above for the selected files/directories."
   "Prompt note for code changes scoped to selected files or directories.")
 
+(defconst ai-code-change--ask-question-note
+  "Note: Please only answer the question about the code above, do not make any code changes."
+  "Prompt note for question-only requests without code changes.")
+
 (defun ai-code--is-comment-line (line)
   "Check if LINE is a comment line based on current buffer's comment syntax.
 Returns non-nil if LINE starts with one or more comment characters,
@@ -329,6 +333,7 @@ Returns non-nil if handled and the caller should exit."
 (defun ai-code--implement-todo--build-and-send-prompt (arg)
   "Build the TODO implementation prompt and insert it.
 ARG is the prefix argument for clipboard context."
+  ;; DONE: ask user with completing-read before build up prompt, candidate should be 1. Code change; 2. Ask question. Given selection, add suffix to them respectively to indicate AI to make code change, or do not make any code change
   (let* ((clipboard-context (when arg (ai-code--get-clipboard-text)))
          (current-line (string-trim (thing-at-point 'line t)))
          (current-line-number (line-number-at-pos (point)))
@@ -393,13 +398,18 @@ ARG is the prefix argument for clipboard context."
            ;; DONE: otherwise, let user know the current line is not a comment and cannot proceed
            (t
             (user-error "Current line is not a TODO comment and cannot proceed with `ai-code-implement-todo'.  Please select a TODO comment (not DONE), a region of comments, or activate on a blank line"))))
+         (action-intent (completing-read "Select action: "
+                                         '("Code change" "Ask question")
+                                         nil t))
          (prompt (ai-code-read-string prompt-label initial-input))
          (final-prompt
           (concat prompt
                   (when (and clipboard-context
                              (string-match-p "\\S-" clipboard-context))
                     (concat "\n\nClipboard context:\n" clipboard-context))
-                  repo-context-string)))
+                  repo-context-string
+                  (when (string= action-intent "Ask question")
+                    (concat "\n" ai-code-change--ask-question-note)))))
     (ai-code--insert-prompt final-prompt)))
 
 ;;; Flycheck integration

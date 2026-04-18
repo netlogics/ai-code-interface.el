@@ -338,6 +338,69 @@ is between the function definition and its body."
         (goto-char (point-min))
         (should (looking-at-p "    ;; TODO: indented task"))))))
 
+(ert-deftest ai-code-test-implement-todo-action-choice-is-presented ()
+  "Test that build-and-send-prompt presents action choice via completing-read."
+  (with-temp-buffer
+    (setq buffer-file-name "test.el")
+    (setq-local comment-start ";")
+    (setq-local comment-end "")
+    (insert ";; TODO: implement feature\n")
+    (goto-char (point-min))
+
+    (let ((action-asked nil))
+      (cl-letf (((symbol-function 'completing-read)
+                 (lambda (_prompt candidates &rest _args)
+                   (when (and (listp candidates)
+                              (member "Code change" candidates)
+                              (member "Ask question" candidates))
+                     (setq action-asked t))
+                   "Code change"))
+                ((symbol-function 'ai-code-read-string)
+                 (lambda (_label input) input))
+                ((symbol-function 'ai-code--get-clipboard-text) (lambda () nil))
+                ((symbol-function 'ai-code--get-context-files-string) (lambda () ""))
+                ((symbol-function 'ai-code--format-repo-context-info) (lambda () ""))
+                ((symbol-function 'ai-code--get-function-name-for-comment) (lambda () nil))
+                ((symbol-function 'which-function) (lambda () nil))
+                ((symbol-function 'region-active-p) (lambda () nil))
+                ((symbol-function 'ai-code--insert-prompt) (lambda (_p) nil)))
+
+        (ai-code--implement-todo--build-and-send-prompt nil)
+
+        (should action-asked)))))
+
+(ert-deftest ai-code-test-implement-todo-action-choice-ask-question ()
+  "Test that choosing 'Ask question' adds no-code-change suffix to prompt."
+  (with-temp-buffer
+    (setq buffer-file-name "test.el")
+    (setq-local comment-start ";")
+    (setq-local comment-end "")
+    (insert ";; TODO: implement feature\n")
+    (goto-char (point-min))
+
+    (let (captured-prompt)
+      (cl-letf (((symbol-function 'completing-read)
+                 (lambda (_prompt candidates &rest _args)
+                   (if (and (listp candidates)
+                            (member "Ask question" candidates))
+                       "Ask question"
+                     (if (listp candidates) (car candidates) ""))))
+                ((symbol-function 'ai-code-read-string)
+                 (lambda (_label input) input))
+                ((symbol-function 'ai-code--get-clipboard-text) (lambda () nil))
+                ((symbol-function 'ai-code--get-context-files-string) (lambda () ""))
+                ((symbol-function 'ai-code--format-repo-context-info) (lambda () ""))
+                ((symbol-function 'ai-code--get-function-name-for-comment) (lambda () nil))
+                ((symbol-function 'which-function) (lambda () nil))
+                ((symbol-function 'region-active-p) (lambda () nil))
+                ((symbol-function 'ai-code--insert-prompt)
+                 (lambda (p) (setq captured-prompt p))))
+
+        (ai-code--implement-todo--build-and-send-prompt nil)
+
+        (should (stringp captured-prompt))
+        (should (string-match-p "do not make any code change" captured-prompt))))))
+
 (provide 'test_ai-code-change)
 
 ;;; test_ai-code-change.el ends here
