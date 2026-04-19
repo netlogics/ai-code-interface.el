@@ -401,6 +401,111 @@ is between the function definition and its body."
         (should (stringp captured-prompt))
         (should (string-match-p "do not make any code change" captured-prompt))))))
 
+(ert-deftest ai-code-test-implement-todo-ask-question-no-implement-wording ()
+  "Test that 'Ask question' prompt body does not contain implementation wording."
+  (with-temp-buffer
+    (setq buffer-file-name "test.el")
+    (setq-local comment-start ";")
+    (setq-local comment-end "")
+    (insert ";; TODO: implement feature\n")
+    (goto-char (point-min))
+
+    (let (captured-prompt)
+      (cl-letf (((symbol-function 'completing-read)
+                 (lambda (_prompt candidates &rest _args)
+                   (if (and (listp candidates)
+                            (member "Ask question" candidates))
+                       "Ask question"
+                     (if (listp candidates) (car candidates) ""))))
+                ((symbol-function 'ai-code-read-string)
+                 (lambda (_label input) input))
+                ((symbol-function 'ai-code--get-clipboard-text) (lambda () nil))
+                ((symbol-function 'ai-code--get-context-files-string) (lambda () ""))
+                ((symbol-function 'ai-code--format-repo-context-info) (lambda () ""))
+                ((symbol-function 'ai-code--get-function-name-for-comment) (lambda () nil))
+                ((symbol-function 'which-function) (lambda () nil))
+                ((symbol-function 'region-active-p) (lambda () nil))
+                ((symbol-function 'ai-code--insert-prompt)
+                 (lambda (p) (setq captured-prompt p))))
+
+        (ai-code--implement-todo--build-and-send-prompt nil)
+
+        (should (stringp captured-prompt))
+        ;; Should NOT contain implementation-oriented wording
+        (should-not (string-match-p "Please implement code" captured-prompt))
+        ;; Should contain question-oriented wording
+        (should (string-match-p "TODO comment" captured-prompt))))))
+
+(ert-deftest ai-code-test-implement-todo-code-change-keeps-implement-wording ()
+  "Test that 'Code change' prompt body still contains implementation wording."
+  (with-temp-buffer
+    (setq buffer-file-name "test.el")
+    (setq-local comment-start ";")
+    (setq-local comment-end "")
+    (insert ";; TODO: implement feature\n")
+    (goto-char (point-min))
+
+    (let (captured-prompt)
+      (cl-letf (((symbol-function 'completing-read)
+                 (lambda (_prompt candidates &rest _args)
+                   (if (and (listp candidates)
+                            (member "Code change" candidates))
+                       "Code change"
+                     (if (listp candidates) (car candidates) ""))))
+                ((symbol-function 'ai-code-read-string)
+                 (lambda (_label input) input))
+                ((symbol-function 'ai-code--get-clipboard-text) (lambda () nil))
+                ((symbol-function 'ai-code--get-context-files-string) (lambda () ""))
+                ((symbol-function 'ai-code--format-repo-context-info) (lambda () ""))
+                ((symbol-function 'ai-code--get-function-name-for-comment) (lambda () nil))
+                ((symbol-function 'which-function) (lambda () nil))
+                ((symbol-function 'region-active-p) (lambda () nil))
+                ((symbol-function 'ai-code--insert-prompt)
+                 (lambda (p) (setq captured-prompt p))))
+
+        (ai-code--implement-todo--build-and-send-prompt nil)
+
+        (should (stringp captured-prompt))
+        ;; Should contain implementation-oriented wording
+        (should (string-match-p "Please implement code" captured-prompt))
+        ;; Should NOT contain no-code-change suffix
+        (should-not (string-match-p "do not make any code change" captured-prompt))))))
+
+(ert-deftest ai-code-test-implement-todo-ask-question-prompt-label ()
+  "Test that 'Ask question' uses a question-oriented prompt label."
+  (with-temp-buffer
+    (setq buffer-file-name "test.el")
+    (setq-local comment-start ";")
+    (setq-local comment-end "")
+    (insert ";; TODO: implement feature\n")
+    (goto-char (point-min))
+
+    (let (captured-label)
+      (cl-letf (((symbol-function 'completing-read)
+                 (lambda (_prompt candidates &rest _args)
+                   (if (and (listp candidates)
+                            (member "Ask question" candidates))
+                       "Ask question"
+                     (if (listp candidates) (car candidates) ""))))
+                ((symbol-function 'ai-code-read-string)
+                 (lambda (label input)
+                   (setq captured-label label)
+                   input))
+                ((symbol-function 'ai-code--get-clipboard-text) (lambda () nil))
+                ((symbol-function 'ai-code--get-context-files-string) (lambda () ""))
+                ((symbol-function 'ai-code--format-repo-context-info) (lambda () ""))
+                ((symbol-function 'ai-code--get-function-name-for-comment) (lambda () nil))
+                ((symbol-function 'which-function) (lambda () nil))
+                ((symbol-function 'region-active-p) (lambda () nil))
+                ((symbol-function 'ai-code--insert-prompt) (lambda (_p) nil)))
+
+        (ai-code--implement-todo--build-and-send-prompt nil)
+
+        (should (stringp captured-label))
+        ;; Should contain question-oriented label, not implementation
+        (should (string-match-p "[Qq]uestion" captured-label))
+        (should-not (string-match-p "implementation" captured-label))))))
+
 (provide 'test_ai-code-change)
 
 ;;; test_ai-code-change.el ends here

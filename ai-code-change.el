@@ -364,8 +364,19 @@ ARG is the prefix argument for clipboard context."
                                                region-start-line)))))
          (files-context-string (ai-code--get-context-files-string))
          (repo-context-string (ai-code--format-repo-context-info))
+         ;; Validate scenario before prompting user
+         (_ (unless (or region-text is-comment)
+              (user-error "Current line is not a TODO comment and cannot proceed with `ai-code-implement-todo'.  Please select a TODO comment (not DONE), a region of comments, or activate on a blank line")))
+         (action-intent (completing-read "Select action: "
+                                         '("Code change" "Ask question")
+                                         nil t))
+         (ask-question-p (string= action-intent "Ask question"))
          (prompt-label
           (cond
+           (ask-question-p
+            (if (and clipboard-context (string-match-p "\\S-" clipboard-context))
+                "Question about TODO comment (clipboard context): "
+              "Question about TODO comment: "))
            ((and clipboard-context
                  (string-match-p "\\S-" clipboard-context))
             (cond
@@ -379,6 +390,14 @@ ARG is the prefix argument for clipboard context."
            (t "TODO implementation instruction: ")))
          (initial-input
           (cond
+           ((and ask-question-p region-text)
+            (unless (ai-code--is-comment-block region-text)
+              (user-error "Selected region must be a comment block"))
+            (format "Regarding this TODO comment block in the selected region:\n%s\n%s%s%s"
+                    region-location-line region-text function-context files-context-string))
+           ((and ask-question-p is-comment)
+            (format "Regarding this TODO comment on line %d: '%s'%s%s"
+                    current-line-number current-line function-context files-context-string))
            (region-text
             (unless (ai-code--is-comment-block region-text)
               (user-error "Selected region must be a comment block"))
@@ -389,18 +408,7 @@ ARG is the prefix argument for clipboard context."
            (is-comment
             (format "Please implement code for this requirement comment on line %d: '%s' first. After implementing, keep the comment in place and ensure it begins with a DONE prefix (change TODO to DONE or prepend DONE if needed). If this is a pure new code block, place it after the comment; otherwise keep the existing structure and make corresponding change for the context.%s%s"
                     current-line-number current-line function-context files-context-string))
-           ;; (function-name
-           ;;  (format "Please implement code after all TODO comments in function '%s'. The TODOs are TODO comments. Keep each comment in place and ensure each begins with a DONE prefix (change TODO to DONE or prepend DONE if needed) before adding implementation code after it. Keep the existing code structure and only add code after these marked items.%s"
-           ;;          function-name files-context-string))
-           ;; (t
-           ;;  (format "Please implement code after all TODO comments in file '%s'. The TODOs are TODO comments. Keep each comment in place and ensure each begins with a DONE prefix (change TODO to DONE or prepend DONE if needed) before adding implementation code after it. Keep the existing code structure and only add code after these marked items.%s"
-           ;;          (file-name-nondirectory buffer-file-name) files-context-string))
-           ;; DONE: otherwise, let user know the current line is not a comment and cannot proceed
-           (t
-            (user-error "Current line is not a TODO comment and cannot proceed with `ai-code-implement-todo'.  Please select a TODO comment (not DONE), a region of comments, or activate on a blank line"))))
-         (action-intent (completing-read "Select action: "
-                                         '("Code change" "Ask question")
-                                         nil t))
+           (t "")))
          (prompt (ai-code-read-string prompt-label initial-input))
          (final-prompt
           (concat prompt
