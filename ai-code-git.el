@@ -290,8 +290,7 @@ Otherwise, ask for the relevant pull request or issue URL."
 (defun ai-code--review-current-branch-with-difftastic ()
   "Review the current branch with `difftastic-magit-diff'.
 Signal a helpful error when difftastic is unavailable."
-  (unless (fboundp 'difftastic-magit-diff)
-    (require 'difftastic nil t))
+  (require 'difftastic nil t)
   (unless (fboundp 'difftastic-magit-diff)
     (user-error
      (concat
