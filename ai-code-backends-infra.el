@@ -874,31 +874,29 @@ When ARG is non-nil, prompt for CLI args using SWITCHES as default input.
 PROMPT-LABEL is used in the minibuffer prompt.
 When resuming and the active region contains a UUID, prompt as though ARG
 were non-nil and append that UUID to the default CLI args."
-  (let* ((resume-command-p
-          (not
-           (null
-            (cl-some (lambda (switch)
-                       (member switch '("resume" "--resume")))
-                     switches))))
+  (let* ((resume-switch
+          (cl-some (lambda (switch)
+                     (member switch '("resume" "--resume")))
+                   switches))
          (selected-session-id
           (and (null arg)
-               resume-command-p
+               resume-switch
                (ai-code-backends-infra--selected-session-id)))
          (should-prompt (or arg selected-session-id))
          (default-args (mapconcat #'identity
-                                  (append switches
-                                          (and selected-session-id
-                                               (list selected-session-id)))
-                                  " "))
+                                   (append switches
+                                           (and selected-session-id
+                                                (list selected-session-id)))
+                                   " "))
          (prompt (format "%s args: " (or prompt-label "CLI")))
          (prompt-args (when should-prompt
-                         (read-string prompt default-args 'ai-code-cli-args-history)))
+                          (read-string prompt default-args 'ai-code-cli-args-history)))
          (resolved-args (if should-prompt
-                             (split-string-shell-command prompt-args)
-                           switches))
+                            (split-string-shell-command prompt-args)
+                          switches))
          (command (mapconcat #'identity
-                              (cons program resolved-args)
-                              " ")))
+                             (cons program resolved-args)
+                             " ")))
     (list :command command :args resolved-args)))
 
 (defun ai-code-backends-infra--cleanup-session (directory buffer-name process-table
