@@ -874,24 +874,24 @@ When ARG is non-nil, prompt for CLI args using SWITCHES as default input.
 PROMPT-LABEL is used in the minibuffer prompt.
 When resuming and the active region contains a UUID, prompt as though ARG
 were non-nil and append that UUID to the default CLI args."
-  (let* ((resume-switch
+  (let* ((found-resume-switch
           (cl-some (lambda (switch)
                      (member switch '("resume" "--resume")))
                    switches))
          (selected-session-id
           (and (null arg)
-               resume-switch
+               found-resume-switch
                (ai-code-backends-infra--selected-session-id)))
-         (should-prompt (or arg selected-session-id))
+         (prompt-p (or arg selected-session-id))
          (default-args (mapconcat #'identity
                                    (append switches
                                            (and selected-session-id
                                                 (list selected-session-id)))
                                    " "))
          (prompt (format "%s args: " (or prompt-label "CLI")))
-         (prompt-args (when should-prompt
-                          (read-string prompt default-args 'ai-code-cli-args-history)))
-         (resolved-args (if should-prompt
+         (prompt-args (when prompt-p
+                           (read-string prompt default-args 'ai-code-cli-args-history)))
+         (resolved-args (if prompt-p
                             (split-string-shell-command prompt-args)
                           switches))
          (command (mapconcat #'identity
