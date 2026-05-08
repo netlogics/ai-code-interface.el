@@ -21,6 +21,10 @@
 (defvar ghostel--copy-mode-active)
 (defvar ghostel--process)
 
+(defconst test-ai-code-backends-infra-valid-uuid
+  "123e4567-e89b-12d3-a456-426614174000"
+  "UUID fixture used by resume command resolution tests.")
+
 (ert-deftest test-ai-code-backends-infra-output-meaningful-p-noise ()
   "Ensure terminal noise is not considered meaningful output."
   (should-not (ai-code-backends-infra--output-meaningful-p nil))
@@ -65,7 +69,7 @@
 
 (ert-deftest test-ai-code-backends-infra-resolve-start-command-prefills-selected-uuid-for-double-dash-resume ()
   "A selected UUID should make `--resume' prompt with that id appended."
-  (let ((uuid "123e4567-e89b-12d3-a456-426614174000")
+  (let ((uuid test-ai-code-backends-infra-valid-uuid)
         seen-prompt
         seen-initial
         seen-history
@@ -95,7 +99,7 @@
 
 (ert-deftest test-ai-code-backends-infra-resolve-start-command-prefills-selected-uuid-for-resume-subcommand ()
   "A selected UUID should make `resume' prompt with that id appended."
-  (let ((uuid "123e4567-e89b-12d3-a456-426614174000")
+  (let ((uuid test-ai-code-backends-infra-valid-uuid)
         seen-initial
         result)
     (with-temp-buffer

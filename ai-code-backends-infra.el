@@ -148,7 +148,7 @@ being sent for the response completion.")
 
 (defconst ai-code-backends-infra--uuid-regexp
   "[[:xdigit:]]\\{8\\}-[[:xdigit:]]\\{4\\}-[[:xdigit:]]\\{4\\}-[[:xdigit:]]\\{4\\}-[[:xdigit:]]\\{12\\}"
-  "Regexp matching a canonical UUID string.")
+  "Regexp matching a UUID in standard 8-4-4-4-12 text format.")
 
 (defun ai-code-backends-infra--selected-session-id ()
   "Return the active region text when it contains a UUID session id."
@@ -873,10 +873,12 @@ When ARG is non-nil, prompt for CLI args using SWITCHES as default input.
 PROMPT-LABEL is used in the minibuffer prompt.
 When resuming and the active region contains a UUID, prompt as though ARG
 were non-nil and append that UUID to the default CLI args."
-  (let* ((selected-session-id
+  (let* ((resume-command-p
+          (or (member "resume" switches)
+              (member "--resume" switches)))
+         (selected-session-id
           (and (null arg)
-               (or (member "resume" switches)
-                   (member "--resume" switches))
+               resume-command-p
                (ai-code-backends-infra--selected-session-id)))
          (should-prompt (or arg selected-session-id))
          (default-args (mapconcat #'identity
