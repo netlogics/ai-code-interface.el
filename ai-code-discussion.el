@@ -91,6 +91,10 @@
   "Please explain the code change introduced by commit:"
   "Prompt prefix for explaining a commit code change.")
 
+(defconst ai-code-discussion--explain-code-change-focus-note
+  "4. Focus on understanding the change. Do not make code changes."
+  "Shared final instruction for code change explanation prompts.")
+
 (defconst ai-code-discussion--explain-prompt-prefixes
   (list ai-code-discussion--explain-selected-files-prefix
         ai-code-discussion--explain-file-at-path-prefix
@@ -430,19 +434,23 @@ sends to AI."
   "Return a PR explanation source instruction for REVIEW-SOURCE."
   (if (fboundp 'ai-code--pull-or-review-source-instruction)
       (ai-code--pull-or-review-source-instruction review-source 'explain-code-change)
-    (pcase review-source
-      ('github-mcp
-       "Use GitHub MCP server to inspect the pull request diff and metadata.")
-      ('gh-cli
-       "Use gh CLI tool to inspect the pull request diff and metadata.")
-      (_
-       "Inspect the pull request diff and metadata to understand the change."))))
+    "Inspect the pull request diff and relevant metadata to understand the change."))
 
 (defun ai-code--explain-code-change-insert-prompt (initial-prompt)
   "Read and insert an explanation prompt starting from INITIAL-PROMPT."
   (let ((final-prompt (ai-code-read-string "Prompt: " initial-prompt)))
     (when final-prompt
       (ai-code--insert-prompt final-prompt))))
+
+(defun ai-code--format-code-change-explanation-outline (step-1 step-2 step-3)
+  "Return shared code-change explanation outline using STEP-1, STEP-2, and STEP-3."
+  (mapconcat #'identity
+             (list "Explanation Steps:"
+                   (concat "1. " step-1)
+                   (concat "2. " step-2)
+                   (concat "3. " step-3)
+                   ai-code-discussion--explain-code-change-focus-note)
+             "\n"))
 
 (defun ai-code--explain-code-change ()
   "Explain a code change from a PR, branch range, or commit."
@@ -473,14 +481,14 @@ sends to AI."
 
 %s
 
-Explanation Steps:
-1. Summarize the overall goal of the code change.
-2. Explain the main files, functions, and behavior changes in the PR.
-3. Highlight important design decisions, risks, and follow-up considerations.
-4. Focus on understanding the change. Do not make code changes.%s"
+%s%s"
                   ai-code-discussion--explain-code-change-pr-prefix
                   pr-url
                   source-instruction
+                  (ai-code--format-code-change-explanation-outline
+                   "Summarize the overall goal of the code change."
+                   "Explain the main files, functions, and behavior changes in the PR."
+                   "Highlight important design decisions, risks, and follow-up considerations.")
                   repo-context-string)))
     (ai-code--explain-code-change-insert-prompt initial-prompt)))
 
@@ -498,16 +506,17 @@ Change range: %s..%s
 Path: %s
 
 In the current repository, inspect `git diff %s..%s` and explain:
-1. The overall purpose of this change set.
-2. The most important files, functions, and logic changes.
-3. The expected behavior impact, migration notes, and risks.
-4. Focus on understanding the change. Do not make code changes.%s"
+%s%s"
                     ai-code-discussion--explain-code-change-branch-range-prefix
                     base-branch
                     branch-name
                     git-root
                     base-branch
                     branch-name
+                    (ai-code--format-code-change-explanation-outline
+                     "The overall purpose of this change set."
+                     "The most important files, functions, and logic changes."
+                     "The expected behavior impact, migration notes, and risks.")
                     repo-context-string)))
       (ai-code--explain-code-change-insert-prompt initial-prompt))))
 
@@ -523,14 +532,15 @@ In the current repository, inspect `git diff %s..%s` and explain:
 Path: %s
 
 In the current repository, inspect `git show %s` and explain:
-1. The problem this commit appears to address.
-2. The key code paths and behavior changes introduced by the commit.
-3. Any noteworthy implementation details, risks, or trade-offs.
-4. Focus on understanding the change. Do not make code changes.%s"
+%s%s"
                     ai-code-discussion--explain-code-change-commit-prefix
                     commit-hash
                     git-root
                     commit-hash
+                    (ai-code--format-code-change-explanation-outline
+                     "The problem this commit appears to address."
+                     "The key code paths and behavior changes introduced by the commit."
+                     "Any noteworthy implementation details, risks, or trade-offs.")
                     repo-context-string)))
       (ai-code--explain-code-change-insert-prompt initial-prompt))))
 
