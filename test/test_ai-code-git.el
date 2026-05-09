@@ -264,6 +264,15 @@ When .gitignore is missing some entries, they should be added."
     (should (eq (ai-code--pull-or-review-pr-mode-choice)
                 'review-ci-checks))))
 
+(ert-deftest ai-code-test-pull-or-review-source-instruction-explain-code-change ()
+  "Explain-code-change mode should inspect the diff, not review comments."
+  (let ((instruction
+         (ai-code--pull-or-review-source-instruction 'github-mcp
+                                                     'explain-code-change)))
+    (should (string-match-p "GitHub MCP server" instruction))
+    (should (string-match-p "diff" (downcase instruction)))
+    (should-not (string-match-p "review comments" (downcase instruction)))))
+
 (ert-deftest ai-code-test-pull-or-review-pr-mode-choice-send-current-branch-pr ()
   "Choosing current branch PR mode should return `send-current-branch-pr'."
   (cl-letf (((symbol-function 'completing-read)

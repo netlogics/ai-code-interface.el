@@ -211,6 +211,13 @@ Merge Conflict Resolution Steps:
        ('gh-cli
         "Use gh CLI tool to fetch pull request branch details and merge status.")
        (_ "Resolve merge conflicts for this pull request.")))
+    ('explain-code-change
+     (pcase review-source
+       ('github-mcp
+        "Use GitHub MCP server to inspect the pull request diff, changed files, commits, and relevant metadata.")
+       ('gh-cli
+        "Use gh CLI tool to inspect the pull request diff, changed files, commits, and relevant metadata.")
+       (_ "Inspect the pull request diff and relevant metadata to understand the change.")))
     (_
      (pcase review-source
        ('github-mcp
