@@ -542,10 +542,7 @@ Return (CAPTURED-PROMPT DIFF-CALLED)."
                  t))
               ((symbol-function 'fboundp)
                (lambda (fn)
-                 (if (eq fn 'ai-code--explain-code-change)
-                     t
-                   (let ((definition (symbol-function fn)))
-                     (and definition t)))))
+                 (eq fn 'ai-code--explain-code-change)))
               ((symbol-function 'ai-code--explain-code-change)
                (lambda (&optional review-source)
                  (setq captured-review-source review-source))))

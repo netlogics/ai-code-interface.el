@@ -436,7 +436,7 @@ sends to AI."
       (ai-code--pull-or-review-source-instruction review-source 'explain-code-change)
     "Inspect the pull request diff and relevant metadata to understand the change."))
 
-(defun ai-code--explain-code-change-review-source (review-source)
+(defun ai-code--ensure-explain-code-change-review-source (review-source)
   "Return REVIEW-SOURCE or prompt for one when needed."
   (or review-source
       (progn
@@ -478,7 +478,7 @@ When REVIEW-SOURCE is non-nil, use it for the GitHub PR flow."
     (pcase code-change-source
       ('github-pr
        (ai-code--explain-code-change-from-github-pr
-        (ai-code--explain-code-change-review-source review-source)))
+        (ai-code--ensure-explain-code-change-review-source review-source)))
       ('branch-range
        (ai-code--explain-code-change-from-branch-range))
       ('commit
