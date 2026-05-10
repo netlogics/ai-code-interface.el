@@ -522,6 +522,11 @@ When REVIEW-SOURCE is non-nil, use it for the GitHub PR flow."
     (let* ((base-branch (ai-code-read-string "Base branch: "))
            (branch-name (ai-code-read-string "Branch to explain: "))
            (repo-context-string (ai-code--format-repo-context-info))
+           (explanation-outline
+            (ai-code--format-code-change-explanation-outline
+             "The overall purpose of this change set."
+             "The most important files, functions, and logic changes."
+             "The expected behavior impact, migration notes, and risks."))
            (initial-prompt
             (format "%s
 Change range: %s..%s
@@ -529,16 +534,13 @@ Path: %s
 
 In the current repository, inspect `git diff %s..%s` and explain:
 %s%s"
-                     ai-code-discussion--explain-code-change-branch-range-prefix
-                     base-branch
-                     branch-name
-                     git-root
-                     base-branch
-                     branch-name
-                    (ai-code--format-code-change-explanation-outline
-                     "The overall purpose of this change set."
-                     "The most important files, functions, and logic changes."
-                     "The expected behavior impact, migration notes, and risks.")
+                    ai-code-discussion--explain-code-change-branch-range-prefix
+                    base-branch
+                    branch-name
+                    git-root
+                    base-branch
+                    branch-name
+                    explanation-outline
                     repo-context-string)))
       (ai-code--explain-code-change-insert-prompt initial-prompt))))
 
@@ -549,20 +551,22 @@ In the current repository, inspect `git diff %s..%s` and explain:
       (user-error "Not in a git repository"))
     (let* ((commit-hash (ai-code-read-string "Commit hash: "))
            (repo-context-string (ai-code--format-repo-context-info))
+           (explanation-outline
+            (ai-code--format-code-change-explanation-outline
+             "The problem this commit appears to address."
+             "The key code paths and behavior changes introduced by the commit."
+             "Any noteworthy implementation details, risks, or trade-offs."))
            (initial-prompt
             (format "%s %s
 Path: %s
 
 In the current repository, inspect `git show %s` and explain:
 %s%s"
-                     ai-code-discussion--explain-code-change-commit-prefix
-                     commit-hash
-                     git-root
-                     commit-hash
-                     (ai-code--format-code-change-explanation-outline
-                      "The problem this commit appears to address."
-                      "The key code paths and behavior changes introduced by the commit."
-                     "Any noteworthy implementation details, risks, or trade-offs.")
+                    ai-code-discussion--explain-code-change-commit-prefix
+                    commit-hash
+                    git-root
+                    commit-hash
+                    explanation-outline
                     repo-context-string)))
       (ai-code--explain-code-change-insert-prompt initial-prompt))))
 
