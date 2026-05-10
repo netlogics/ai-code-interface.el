@@ -523,15 +523,15 @@ When REVIEW-SOURCE is non-nil, use it for the GitHub PR flow."
            (branch-name (ai-code-read-string "Branch to explain: "))
            (repo-context-string (ai-code--format-repo-context-info))
            (initial-prompt
-             (format "%s
+            (format "%s
 Change range: %s..%s
 Path: %s
 
 In the current repository, inspect `git diff %s..%s` and explain:
 %s%s"
-                    ai-code-discussion--explain-code-change-branch-range-prefix
-                    base-branch
-                    branch-name
+                     ai-code-discussion--explain-code-change-branch-range-prefix
+                     base-branch
+                     branch-name
                      git-root
                      base-branch
                      branch-name
@@ -550,18 +550,18 @@ In the current repository, inspect `git diff %s..%s` and explain:
     (let* ((commit-hash (ai-code-read-string "Commit hash: "))
            (repo-context-string (ai-code--format-repo-context-info))
            (initial-prompt
-             (format "%s %s
+            (format "%s %s
 Path: %s
 
 In the current repository, inspect `git show %s` and explain:
 %s%s"
-                    ai-code-discussion--explain-code-change-commit-prefix
-                    commit-hash
-                    git-root
+                     ai-code-discussion--explain-code-change-commit-prefix
                      commit-hash
-                    (ai-code--format-code-change-explanation-outline
-                     "The problem this commit appears to address."
-                     "The key code paths and behavior changes introduced by the commit."
+                     git-root
+                     commit-hash
+                     (ai-code--format-code-change-explanation-outline
+                      "The problem this commit appears to address."
+                      "The key code paths and behavior changes introduced by the commit."
                      "Any noteworthy implementation details, risks, or trade-offs.")
                     repo-context-string)))
       (ai-code--explain-code-change-insert-prompt initial-prompt))))
