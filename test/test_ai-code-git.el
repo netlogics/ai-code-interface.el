@@ -532,11 +532,12 @@ Return (CAPTURED-PROMPT DIFF-CALLED)."
 
 (ert-deftest ai-code-test-pull-or-review-pr-with-source-explain-code-change-shares-flow ()
   "Explain code change mode should dispatch to the shared explanation flow."
-  (let (captured-review-source)
+  (let (captured-review-source require-called)
     (cl-letf (((symbol-function 'completing-read)
                (lambda (&rest _args) "Explain code change"))
               ((symbol-function 'require)
                (lambda (feature &optional _filename _noerror)
+                 (setq require-called t)
                  (unless (eq feature 'ai-code-discussion)
                    (ert-fail (format "Unexpected require: %S" feature)))
                  t))
@@ -547,6 +548,7 @@ Return (CAPTURED-PROMPT DIFF-CALLED)."
                (lambda (&optional review-source)
                  (setq captured-review-source review-source))))
       (ai-code--pull-or-review-pr-with-source 'github-mcp)
+      (should require-called)
       (should (eq captured-review-source 'github-mcp)))))
 
 (ert-deftest ai-code-test-pull-or-review-pr-mode-choice-resolve-merge-conflict ()
