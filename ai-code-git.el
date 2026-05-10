@@ -92,7 +92,7 @@ When `ai-code-default-review-source' is set, return it directly."
                                       nil t nil nil "Use GitHub MCP server")))
         (alist-get choice action-alist nil nil #'string=))))
 
-(defun ai-code--pull-or-review-message-review-source-config-hint ()
+(defun ai-code--message-review-source-config-hint ()
   "Message a minibuffer hint about configuring `ai-code-default-review-source'."
   (message
    "Tip: set ai-code-default-review-source to github-mcp or gh-cli to skip this review-source prompt in future C-c a v runs."))
@@ -447,7 +447,7 @@ Provide overall assessment.
         (ai-code--insert-prompt prompt))
     ;; For non-diff files, let user choose PR review via MCP/gh CLI.
     (unless ai-code-default-review-source
-      (ai-code--pull-or-review-message-review-source-config-hint))
+      (ai-code--message-review-source-config-hint))
     (let ((review-source (ai-code--pull-or-review-action-choice)))
       (ai-code--pull-or-review-pr-with-source review-source))))
 
