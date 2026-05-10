@@ -629,7 +629,7 @@ Return (CAPTURED-PROMPT DIFF-CALLED)."
        (should-not completing-read-called))))
 
 (ert-deftest ai-code-test-pull-or-review-message-displays-config-hint ()
-  "The review-source guidance should be shown in the minibuffer."
+  "The review-source guidance should be messaged in the minibuffer."
   (let (captured-message)
     (cl-letf (((symbol-function 'message)
                (lambda (format-string &rest args)
