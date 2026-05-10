@@ -446,9 +446,9 @@ Provide overall assessment.
              (prompt (ai-code-read-string "Enter review prompt (type requirement at end): " init-prompt)))
         (ai-code--insert-prompt prompt))
     ;; For non-diff files, let user choose PR review via MCP/gh CLI.
+    (unless ai-code-default-review-source
+      (ai-code--pull-or-review-message-review-source-config-hint))
     (let ((review-source (ai-code--pull-or-review-action-choice)))
-      (unless ai-code-default-review-source
-        (ai-code--pull-or-review-message-review-source-config-hint))
       (ai-code--pull-or-review-pr-with-source review-source))))
 
 (defun ai-code--validate-git-repository ()
