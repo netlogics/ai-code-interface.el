@@ -93,7 +93,7 @@ When `ai-code-default-review-source' is set, return it directly."
         (alist-get choice action-alist nil nil #'string=))))
 
 (defun ai-code--pull-or-review-message-review-source-config-hint ()
-  "Tell the user how to skip future review-source prompt."
+  "Display a minibuffer hint about configuring `ai-code-default-review-source'."
   (message
    "Tip: set ai-code-default-review-source to github-mcp or gh-cli to skip this review-source prompt in future C-c a v runs."))
 

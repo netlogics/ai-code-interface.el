@@ -628,7 +628,7 @@ Return (CAPTURED-PROMPT DIFF-CALLED)."
        (should (eq (ai-code--pull-or-review-action-choice) 'github-mcp))
        (should-not completing-read-called))))
 
-(ert-deftest ai-code-test-message-review-source-config-hint ()
+(ert-deftest ai-code-test-pull-or-review-message-displays-config-hint ()
   "The review-source guidance should be shown in the minibuffer."
   (let (captured-message)
     (cl-letf (((symbol-function 'message)
