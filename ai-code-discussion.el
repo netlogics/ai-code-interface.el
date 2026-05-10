@@ -467,9 +467,10 @@ sends to AI."
                    ai-code-discussion--explain-code-change-focus-note)
              "\n"))
 
-(defun ai-code--explain-code-change (&optional review-source)
+(defun ai-code--explain-code-change (&optional review-source extra-note)
   "Explain a code change from a PR, branch range, or commit.
-When REVIEW-SOURCE is non-nil, use it for the GitHub PR flow."
+When REVIEW-SOURCE is non-nil, use it for the GitHub PR flow.
+Append EXTRA-NOTE when non-nil."
   (let* ((choices '(("GitHub PR" . github-pr)
                     ("base..branch" . branch-range)
                     ("commit" . commit)))
@@ -478,16 +479,18 @@ When REVIEW-SOURCE is non-nil, use it for the GitHub PR flow."
     (pcase code-change-source
       ('github-pr
        (ai-code--explain-code-change-from-github-pr
-        (ai-code--ensure-explain-code-change-review-source review-source)))
+        (ai-code--ensure-explain-code-change-review-source review-source)
+        extra-note))
       ('branch-range
-       (ai-code--explain-code-change-from-branch-range))
+       (ai-code--explain-code-change-from-branch-range extra-note))
       ('commit
-       (ai-code--explain-code-change-from-commit))
+       (ai-code--explain-code-change-from-commit extra-note))
       (_
        (user-error "Unknown code change source: %s" selection)))))
 
-(defun ai-code--explain-code-change-from-github-pr (review-source)
-  "Build a prompt to explain a code change from a GitHub PR using REVIEW-SOURCE."
+(defun ai-code--explain-code-change-from-github-pr (review-source &optional extra-note)
+  "Build a prompt to explain a code change from a GitHub PR using REVIEW-SOURCE.
+Append EXTRA-NOTE when non-nil."
   (let* ((pr-url (ai-code-read-string "Pull request URL: "))
          (source-instruction
           (ai-code--explain-code-change-source-instruction review-source))
@@ -497,7 +500,7 @@ When REVIEW-SOURCE is non-nil, use it for the GitHub PR flow."
 
 %s
 
-%s%s"
+%s%s%s"
                   ai-code-discussion--explain-code-change-pr-prefix
                   pr-url
                   source-instruction
@@ -505,17 +508,22 @@ When REVIEW-SOURCE is non-nil, use it for the GitHub PR flow."
                    "Summarize the overall goal of the code change."
                    "Explain the main files, functions, and behavior changes in the PR."
                    "Highlight important design decisions, risks, and follow-up considerations.")
-                  repo-context-string)))
+                  repo-context-string
+                  (if extra-note
+                      (concat "\n\n" extra-note)
+                    ""))))
     (ai-code--explain-code-change-insert-prompt initial-prompt)))
 
-(defun ai-code-explain-code-change (&optional review-source)
+(defun ai-code-explain-code-change (&optional review-source extra-note)
   "Explain a code change using shared discussion helpers.
-When REVIEW-SOURCE is non-nil, use it for the GitHub PR flow."
+When REVIEW-SOURCE is non-nil, use it for the GitHub PR flow.
+Append EXTRA-NOTE when non-nil."
   (interactive)
-  (ai-code--explain-code-change review-source))
+  (ai-code--explain-code-change review-source extra-note))
 
-(defun ai-code--explain-code-change-from-branch-range ()
-  "Build a prompt to explain a code change from BASE..BRANCH."
+(defun ai-code--explain-code-change-from-branch-range (&optional extra-note)
+  "Build a prompt to explain a code change from BASE..BRANCH.
+Append EXTRA-NOTE when non-nil."
   (let ((git-root (ai-code--git-root)))
     (unless git-root
       (user-error "Not in a git repository"))
@@ -528,7 +536,7 @@ Change range: %s..%s
 Path: %s
 
 In the current repository, inspect `git diff %s..%s` and explain:
-%s%s"
+%s%s%s"
                     ai-code-discussion--explain-code-change-branch-range-prefix
                     base-branch
                     branch-name
@@ -539,11 +547,15 @@ In the current repository, inspect `git diff %s..%s` and explain:
                      "The overall purpose of this change set."
                      "The most important files, functions, and logic changes."
                      "The expected behavior impact, migration notes, and risks.")
-                    repo-context-string)))
+                    repo-context-string
+                    (if extra-note
+                        (concat "\n\n" extra-note)
+                      ""))))
       (ai-code--explain-code-change-insert-prompt initial-prompt))))
 
-(defun ai-code--explain-code-change-from-commit ()
-  "Build a prompt to explain a code change from a specific commit."
+(defun ai-code--explain-code-change-from-commit (&optional extra-note)
+  "Build a prompt to explain a code change from a specific commit.
+Append EXTRA-NOTE when non-nil."
   (let ((git-root (ai-code--git-root)))
     (unless git-root
       (user-error "Not in a git repository"))
@@ -554,7 +566,7 @@ In the current repository, inspect `git diff %s..%s` and explain:
 Path: %s
 
 In the current repository, inspect `git show %s` and explain:
-%s%s"
+%s%s%s"
                     ai-code-discussion--explain-code-change-commit-prefix
                     commit-hash
                     git-root
@@ -563,7 +575,10 @@ In the current repository, inspect `git show %s` and explain:
                      "The problem this commit appears to address."
                      "The key code paths and behavior changes introduced by the commit."
                      "Any noteworthy implementation details, risks, or trade-offs.")
-                    repo-context-string)))
+                    repo-context-string
+                    (if extra-note
+                        (concat "\n\n" extra-note)
+                      ""))))
       (ai-code--explain-code-change-insert-prompt initial-prompt))))
 
 (defun ai-code--explain-symbol ()
