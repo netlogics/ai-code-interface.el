@@ -731,16 +731,25 @@ ENTRY may be a path string or a symbol whose value is a path string."
                        ai-code-note-search-additional-paths)))
    :test #'string-equal))
 
+(defun ai-code--note-search-additional-scope-candidates (ai-code-files-dir)
+  "Return additional note search scopes beyond AI-CODE-FILES-DIR."
+  (cl-remove ai-code-files-dir
+             (ai-code--note-search-scope-candidates ai-code-files-dir)
+             :test #'string-equal))
+
 (defun ai-code--read-note-search-scopes (ai-code-files-dir)
-  "Prompt for which note search scopes to include from AI-CODE-FILES-DIR."
-  (let ((selected-scopes nil))
-    (dolist (scope (ai-code--note-search-scope-candidates ai-code-files-dir))
-      (when (y-or-n-p (format "Include note search scope %s? " scope))
-        (push scope selected-scopes)))
-    (setq selected-scopes (nreverse selected-scopes))
-    (unless selected-scopes
-      (user-error "No note search scope selected"))
-    selected-scopes))
+  "Return note search scopes rooted at AI-CODE-FILES-DIR.
+Always include AI-CODE-FILES-DIR.  When configured additional note paths
+exist, prompt once to optionally include them as well."
+  (let ((additional-scopes
+         (ai-code--note-search-additional-scope-candidates ai-code-files-dir)))
+    (if (and additional-scopes
+             (y-or-n-p
+              (format
+               "Include additional note search paths from `ai-code-note-search-additional-paths` along with %s? "
+               ai-code-files-dir)))
+        (cons ai-code-files-dir additional-scopes)
+      (list ai-code-files-dir))))
 
 (defun ai-code--build-note-search-prompt (scopes search-description)
   "Build a prompt for searching SCOPES for SEARCH-DESCRIPTION."
