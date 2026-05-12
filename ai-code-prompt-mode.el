@@ -525,6 +525,14 @@ for example `org-roam-directory'."
            (symbol :tag "Variable")))
   :group 'ai-code)
 
+(defcustom ai-code-note-search-data-source-instructions
+  '("Use MCP servers as data sources when available to inspect the selected paths."
+    "Use the available search tools to inspect the selected paths.")
+  "Instructions appended to note-search prompts for tool and data-source usage.
+Each entry should be a single instruction string."
+  :type '(repeat string)
+  :group 'ai-code)
+
 (defun ai-code--get-files-directory ()
   "Get the task directory path.
 If in a git repository, return `.ai.code.files/` under git root.
@@ -755,22 +763,25 @@ exist, prompt once to optionally include them as well."
   "Build a prompt for searching SCOPES for SEARCH-DESCRIPTION."
   (let ((git-root-truename
          (when-let ((git-root (ai-code--git-root)))
-           (file-truename git-root))))
+           (file-truename git-root)))
+        (instruction-block
+         (mapconcat #'identity ai-code-note-search-data-source-instructions "\n")))
     (format
      (concat
-      "Search my notes and related files for: %s\n"
-      "Search scope paths:\n%s\n"
-      "Use the available search tools to inspect the selected paths.\n"
-      "Focus on relevant information inside files, not just file names.\n"
-      "Return the most relevant paths, matched excerpts, and a concise answer.")
-     search-description
-     (mapconcat
+       "Search my notes and related files for: %s\n"
+       "Search scope paths:\n%s\n"
+       "%s\n"
+       "Focus on relevant information inside files, not just file names.\n"
+       "Return the most relevant paths, matched excerpts, and a concise answer.")
+      search-description
+      (mapconcat
       (lambda (scope)
         (format "- %s"
-                (if git-root-truename
-                    (ai-code--candidate-path scope git-root-truename)
-                  scope)))
-      scopes "\n"))))
+                 (if git-root-truename
+                     (ai-code--candidate-path scope git-root-truename)
+                   scope)))
+       scopes "\n")
+      instruction-block)))
 
 (defun ai-code--search-task-files-with-ai (ai-code-files-dir)
   "Prompt for task file search inputs and send a search request to AI."
@@ -792,40 +803,37 @@ exist, prompt once to optionally include them as well."
     (ai-code--insert-prompt confirmed-prompt)))
 
 ;;;###autoload
-(defun ai-code-create-or-open-task-file (&optional arg)
+(defun ai-code-create-or-open-task-file ()
   "Create or open an AI task file.
 Prompts for a task name. If empty, opens the task directory.
 If non-empty, optionally prompts for a URL, generates a filename
-using GPTel, and creates the task file.
-With prefix ARG, prompt AI to search org file content under a target directory."
-  (interactive "P")
+using GPTel, and creates the task file."
+  (interactive)
   (let ((ai-code-files-dir (ai-code--ensure-files-directory)))
-    (if arg
-        (ai-code--search-task-files-with-ai ai-code-files-dir)
-      (let* ((task-file-candidates (ai-code--task-file-candidates ai-code-files-dir))
-             (task-name (ai-code--read-task-name task-file-candidates))
-             (existing-task-file (ai-code--existing-task-file-path task-name task-file-candidates ai-code-files-dir)))
-        (cond
-         ((string-empty-p task-name)
-          (dired-other-window ai-code-files-dir)
-          (message "Opened task directory: %s" ai-code-files-dir))
-         (existing-task-file
-          (ai-code--open-or-create-task-file existing-task-file task-name task-name ""))
-         (t
-          (let* ((task-url (read-string "URL (optional, press Enter to skip): "))
-                 (generated-filename (ai-code--generate-task-filename task-name))
-                 (confirmed-filename (read-string "Confirm task filename (end with / to create subdirectory): " generated-filename))
-                 (current-dir (expand-file-name default-directory))
-                 (selected-dir (ai-code--select-task-target-directory ai-code-files-dir current-dir))
-                 (create-dir-only-p (string-suffix-p "/" confirmed-filename))
-                 (task-file (expand-file-name confirmed-filename selected-dir)))
-            (if create-dir-only-p
-                (let ((subdir (expand-file-name (directory-file-name confirmed-filename) selected-dir)))
-                  (unless (file-directory-p subdir)
-                    (make-directory subdir t))
-                  (dired-other-window subdir)
-                  (message "Opened directory: %s" subdir))
-              (ai-code--open-or-create-task-file task-file confirmed-filename task-name task-url)))))))))
+    (let* ((task-file-candidates (ai-code--task-file-candidates ai-code-files-dir))
+           (task-name (ai-code--read-task-name task-file-candidates))
+           (existing-task-file (ai-code--existing-task-file-path task-name task-file-candidates ai-code-files-dir)))
+      (cond
+       ((string-empty-p task-name)
+        (dired-other-window ai-code-files-dir)
+        (message "Opened task directory: %s" ai-code-files-dir))
+       (existing-task-file
+        (ai-code--open-or-create-task-file existing-task-file task-name task-name ""))
+       (t
+        (let* ((task-url (read-string "URL (optional, press Enter to skip): "))
+               (generated-filename (ai-code--generate-task-filename task-name))
+               (confirmed-filename (read-string "Confirm task filename (end with / to create subdirectory): " generated-filename))
+               (current-dir (expand-file-name default-directory))
+               (selected-dir (ai-code--select-task-target-directory ai-code-files-dir current-dir))
+               (create-dir-only-p (string-suffix-p "/" confirmed-filename))
+               (task-file (expand-file-name confirmed-filename selected-dir)))
+          (if create-dir-only-p
+              (let ((subdir (expand-file-name (directory-file-name confirmed-filename) selected-dir)))
+                (unless (file-directory-p subdir)
+                  (make-directory subdir t))
+                (dired-other-window subdir)
+                (message "Opened directory: %s" subdir))
+            (ai-code--open-or-create-task-file task-file confirmed-filename task-name task-url))))))))
 
 ;;;###autoload
 (add-to-list 'auto-mode-alist

@@ -412,7 +412,8 @@ Shows the current backend label to the right."
   ("v" "GitHub PR AI Action" ai-code-pull-or-review-diff-file)
   ("!" "Run Current File or Command" ai-code-run-current-file-or-shell-cmd)
   ("b" "Build/Test/Lint (AI follow-up)" ai-code-build-or-test-project)
-  ("K" "Search notes with AI" ai-code-search-notes-with-ai)
+  ("K" "Create/Open task file" ai-code-create-or-open-task-file)
+  ("o" "Search notes with AI" ai-code-search-notes-with-ai)
   ("n" "Take notes from AI session" ai-code-take-notes)
   (":" "Speech to text input" ai-code-speech-to-text-input))
 

@@ -295,66 +295,39 @@ and ensures everything is cleaned up afterward."
      (when (file-directory-p files-dir)
        (delete-directory files-dir t)))))
 
-(ert-deftest ai-code-test-create-or-open-task-file-with-prefix-sends-search-prompt ()
-  "Test that prefix arg sends a confirmed search prompt to the AI session."
+(ert-deftest ai-code-test-create-or-open-task-file-prefix-opens-task-directory ()
+  "Test that prefix arg no longer changes task file creation behavior."
   (ai-code-with-test-repo
    (let* ((files-dir (expand-file-name ".ai.code.files" git-root))
-          (search-dir (expand-file-name "notes" files-dir))
-          (read-calls nil)
-          (sent-command nil)
-          (switch-called nil))
-     (make-directory search-dir t)
+          (dired-called nil)
+          (dired-dir nil)
+          (sent-command nil))
      (unwind-protect
          (progn
-           (cl-letf (((symbol-function 'read-string)
-                      (lambda (prompt &optional initial-input history default-value _inherit)
-                        (push (list prompt initial-input history default-value) read-calls)
-                        (if (string-match-p "Directory to search" prompt)
-                            search-dir
-                          (ert-fail (format "Unexpected prompt: %s" prompt)))))
-                     ((symbol-function 'ai-code-read-string)
-                      (lambda (prompt &optional initial-input candidate-list)
-                        (push (list prompt initial-input candidate-list) read-calls)
-                        (cond
-                         ((string-match-p "Search description" prompt) "find todos about auth")
-                         ((string-match-p "Confirm search prompt" prompt) initial-input)
-                         (t (ert-fail (format "Unexpected prompt: %s" prompt))))))
-                     ((symbol-function 'ai-code-cli-send-command)
-                      (lambda (command)
-                        (setq sent-command command)))
-	                     ((symbol-function 'ai-code-cli-switch-to-buffer)
-	                      (lambda ()
-	                        (setq switch-called t)))
-	                     ((symbol-function 'message)
-	                      (lambda (&rest _args) nil)))
-	             (let ((current-prefix-arg '(4))
-	                   (ai-code-prompt-suffix nil)
-	                   (ai-code-auto-test-type nil)
-	                   (ai-code-auto-test-suffix nil)
-	                   (ai-code-discussion-auto-follow-up-enabled nil)
-	                   (ai-code-discussion-auto-follow-up-suffix nil)
-	                   (ai-code-use-prompt-suffix nil))
-	               (call-interactively #'ai-code-create-or-open-task-file))
-	             (should switch-called)
-             (should (equal (car (car (last read-calls)))
-                            "Directory to search org files: "))
-             (should (equal (nth 1 (car (last read-calls))) files-dir))
-             (should (eq (nth 2 (car (last read-calls)))
-                         'ai-code-task-search-directory-history))
-	             (should (equal sent-command
-	                            (concat
-	                             "Search the content of all .org files recursively under directory: "
-	                             "@"
-	                             (file-relative-name search-dir git-root)
-	                             "\n"
-	                             "Search target description: find todos about auth"
-	                             "\n"
-	                             "Focus on matching content inside the files, not just file names."
-	                             "\n"
-	                             "Return the relevant file paths, matched excerpts, and a concise summary."
-	                             "\n")))))
-	       (when (file-directory-p files-dir)
-	         (delete-directory files-dir t))))))
+            (cl-letf (((symbol-function 'completing-read)
+                       (lambda (prompt collection &rest _args)
+                         (cond
+                          ((string-match-p "Task name" prompt)
+                           (should (member "scratch.org" collection))
+                           "")
+                          (t
+                           (ert-fail (format "Unexpected prompt: %s" prompt))))))
+                      ((symbol-function 'dired-other-window)
+                       (lambda (dirname)
+                         (setq dired-called t)
+                         (setq dired-dir dirname)))
+                      ((symbol-function 'ai-code-cli-send-command)
+                       (lambda (command)
+                         (setq sent-command command)))
+                      ((symbol-function 'message)
+                       (lambda (&rest _args) nil)))
+              (let ((current-prefix-arg '(4)))
+                (call-interactively #'ai-code-create-or-open-task-file))
+              (should dired-called)
+              (should (equal dired-dir files-dir))
+              (should-not sent-command)))
+       (when (file-directory-p files-dir)
+         (delete-directory files-dir t))))))
 
 (ert-deftest ai-code-test-read-task-search-directory-expands-relative-input-from-files-dir ()
   "Relative search directories should resolve from AI-CODE-FILES-DIR."
@@ -376,6 +349,9 @@ and ensures everything is cleaned up afterward."
           (external-dir (make-temp-file "ai-code-external-notes" t))
           (org-roam-directory roam-dir)
           (ai-code-note-search-additional-paths (list 'org-roam-directory external-dir))
+          (ai-code-note-search-data-source-instructions
+           '("Use MCP servers as data sources when available."
+             "Use the available search tools to inspect the selected paths."))
           (asked-scopes nil)
           (sent-command nil)
           (switch-called nil))
@@ -422,6 +398,7 @@ and ensures everything is cleaned up afterward."
                                              "- @" (file-relative-name files-dir git-root) "\n"
                                              "- @" (file-relative-name roam-dir git-root) "\n"
                                              "- " external-dir "\n"
+                                             "Use MCP servers as data sources when available.\n"
                                              "Use the available search tools to inspect the selected paths.\n"
                                              "Focus on relevant information inside files, not just file names.\n"
                                              "Return the most relevant paths, matched excerpts, and a concise answer.\n"))
@@ -435,6 +412,8 @@ and ensures everything is cleaned up afterward."
    (let* ((files-dir (expand-file-name ".ai.code.files" git-root))
           (external-dir (make-temp-file "ai-code-external-notes" t))
           (ai-code-note-search-additional-paths (list external-dir))
+          (ai-code-note-search-data-source-instructions
+           '("Use MCP servers as data sources when available."))
           (asked-scopes nil)
           (sent-command nil))
      (cl-letf (((symbol-function 'y-or-n-p)
@@ -472,7 +451,7 @@ and ensures everything is cleaned up afterward."
                       (regexp-quote (concat "Search my notes and related files for: base only\n"
                                             "Search scope paths:\n"
                                             "- @" (file-relative-name files-dir git-root) "\n"
-                                            "Use the available search tools to inspect the selected paths.\n"
+                                            "Use MCP servers as data sources when available.\n"
                                             "Focus on relevant information inside files, not just file names.\n"
                                             "Return the most relevant paths, matched excerpts, and a concise answer.\n"))
                       sent-command))

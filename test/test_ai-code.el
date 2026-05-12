@@ -284,9 +284,18 @@
     (should (equal (plist-get (cdr suffix) :description)
                    "Speech to text input"))))
 
-(ert-deftest ai-code-test-menu-agile-development-binds-k-to-note-search ()
-  "Test that Agile Development menu exposes AI note search on K."
+(ert-deftest ai-code-test-menu-agile-development-binds-k-to-task-file ()
+  "Test that Agile Development menu exposes task files on K."
   (let ((suffix (transient-get-suffix 'ai-code--menu-agile-development "K")))
+    (should suffix)
+    (should (eq (plist-get (cdr suffix) :command)
+                'ai-code-create-or-open-task-file))
+    (should (equal (plist-get (cdr suffix) :description)
+                   "Create/Open task file"))))
+
+(ert-deftest ai-code-test-menu-agile-development-binds-o-to-note-search ()
+  "Test that Agile Development menu exposes AI note search on o."
+  (let ((suffix (transient-get-suffix 'ai-code--menu-agile-development "o")))
     (should suffix)
     (should (eq (plist-get (cdr suffix) :command)
                 'ai-code-search-notes-with-ai))
