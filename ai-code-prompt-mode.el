@@ -6,9 +6,11 @@
 
 ;;; Code:
 
+(require 'cl-lib)
 (require 'org)
 (require 'magit)
 
+(defvar ai-code-files-dir-name)
 (defvar yas-snippet-dirs)
 
 (declare-function ai-code--git-root "ai-code-file" (&optional dir))
@@ -511,6 +513,18 @@ based on the task name. Otherwise, use cleaned-up task name directly."
 (defvar ai-code-task-search-directory-history nil
   "Minibuffer history for task content search directories.")
 
+;;;###autoload
+(defcustom ai-code-note-search-additional-paths nil
+  "Additional paths to offer when searching notes with AI.
+Each entry may be a path string or a symbol whose value is a path string,
+for example `org-roam-directory'."
+  :type '(repeat
+          (choice
+           (directory :tag "Directory")
+           (string :tag "Path")
+           (symbol :tag "Variable")))
+  :group 'ai-code)
+
 (defun ai-code--get-files-directory ()
   "Get the task directory path.
 If in a git repository, return `.ai.code.files/` under git root.
@@ -694,11 +708,68 @@ SEARCH-DESCRIPTION describes what content the AI should search for."
    target-dir
    search-description))
 
+(defun ai-code--resolve-note-search-path (entry)
+  "Resolve note search ENTRY to an existing absolute path, or nil.
+ENTRY may be a path string or a symbol whose value is a path string."
+  (let* ((raw-value
+          (cond
+           ((symbolp entry)
+            (and (boundp entry) (symbol-value entry)))
+           ((stringp entry) entry)))
+         (path (and (stringp raw-value)
+                    (not (string-empty-p raw-value))
+                    (expand-file-name raw-value))))
+    (when (and path (file-exists-p path))
+      path)))
+
+(defun ai-code--note-search-scope-candidates (ai-code-files-dir)
+  "Return candidate note search scopes rooted at AI-CODE-FILES-DIR."
+  (cl-remove-duplicates
+   (delq nil
+         (cons ai-code-files-dir
+               (mapcar #'ai-code--resolve-note-search-path
+                       ai-code-note-search-additional-paths)))
+   :test #'string-equal))
+
+(defun ai-code--read-note-search-scopes (ai-code-files-dir)
+  "Prompt for which note search scopes to include from AI-CODE-FILES-DIR."
+  (let ((selected-scopes nil))
+    (dolist (scope (ai-code--note-search-scope-candidates ai-code-files-dir))
+      (when (y-or-n-p (format "Include note search scope %s? " scope))
+        (push scope selected-scopes)))
+    (setq selected-scopes (nreverse selected-scopes))
+    (unless selected-scopes
+      (user-error "No note search scope selected"))
+    selected-scopes))
+
+(defun ai-code--build-note-search-prompt (scopes search-description)
+  "Build a prompt for searching SCOPES for SEARCH-DESCRIPTION."
+  (format
+   (concat
+    "Search my notes and related files for: %s\n"
+    "Search scope paths:\n%s\n"
+    "Use the available search tools to inspect the selected paths.\n"
+    "Focus on relevant information inside files, not just file names.\n"
+    "Return the most relevant paths, matched excerpts, and a concise answer.")
+   search-description
+   (mapconcat (lambda (scope) (format "- %s" scope)) scopes "\n")))
+
 (defun ai-code--search-task-files-with-ai (ai-code-files-dir)
   "Prompt for task file search inputs and send a search request to AI."
   (let* ((target-dir (ai-code--read-task-search-directory ai-code-files-dir))
          (search-description (ai-code-read-string "Search description for .org files: "))
          (default-prompt (ai-code--build-task-search-prompt target-dir search-description))
+         (confirmed-prompt (ai-code-read-string "Confirm search prompt: " default-prompt)))
+    (ai-code--insert-prompt confirmed-prompt)))
+
+;;;###autoload
+(defun ai-code-search-notes-with-ai ()
+  "Ask AI to search task files and configured note paths."
+  (interactive)
+  (let* ((ai-code-files-dir (ai-code--ensure-files-directory))
+         (scopes (ai-code--read-note-search-scopes ai-code-files-dir))
+         (search-description (ai-code-read-string "Search notes for: "))
+         (default-prompt (ai-code--build-note-search-prompt scopes search-description))
          (confirmed-prompt (ai-code-read-string "Confirm search prompt: " default-prompt)))
     (ai-code--insert-prompt confirmed-prompt)))
 

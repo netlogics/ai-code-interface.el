@@ -284,6 +284,15 @@
     (should (equal (plist-get (cdr suffix) :description)
                    "Speech to text input"))))
 
+(ert-deftest ai-code-test-menu-agile-development-binds-k-to-note-search ()
+  "Test that Agile Development menu exposes AI note search on K."
+  (let ((suffix (transient-get-suffix 'ai-code--menu-agile-development "K")))
+    (should suffix)
+    (should (eq (plist-get (cdr suffix) :command)
+                'ai-code-search-notes-with-ai))
+    (should (equal (plist-get (cdr suffix) :description)
+                   "Search notes with AI"))))
+
 (provide 'test_ai-code)
 
 ;;; test_ai-code.el ends here
