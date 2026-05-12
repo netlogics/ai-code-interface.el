@@ -411,7 +411,18 @@ and ensures everything is cleaned up afterward."
                    (ai-code-use-prompt-suffix nil))
                (ai-code-search-notes-with-ai))
              (should switch-called)
-             (should (= (length asked-scopes) 3))
+             (should (cl-some
+                      (lambda (prompt)
+                        (string-match-p (regexp-quote files-dir) prompt))
+                      asked-scopes))
+             (should (cl-some
+                      (lambda (prompt)
+                        (string-match-p (regexp-quote roam-dir) prompt))
+                      asked-scopes))
+             (should (cl-some
+                      (lambda (prompt)
+                        (string-match-p (regexp-quote external-dir) prompt))
+                      asked-scopes))
              (should (string-match-p
                       (regexp-quote (concat "Search my notes and related files for: auth design notes\n"
                                             "Search scope paths:\n"
