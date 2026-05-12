@@ -805,7 +805,7 @@ exist, prompt once to optionally include them as well."
 ;;;###autoload
 (defun ai-code-create-or-open-task-file ()
   "Create or open an AI task file.
-Prompts for a task name. If empty, opens the task directory.
+Prompts for a task name. If empty, opens the task directory in Dired.
 If non-empty, optionally prompts for a URL, generates a filename
 using GPTel, and creates the task file."
   (interactive)

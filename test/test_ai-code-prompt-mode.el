@@ -295,8 +295,8 @@ and ensures everything is cleaned up afterward."
      (when (file-directory-p files-dir)
        (delete-directory files-dir t)))))
 
-(ert-deftest ai-code-test-create-or-open-task-file-prefix-opens-task-directory ()
-  "Test that prefix arg no longer changes task file creation behavior."
+(ert-deftest ai-code-test-create-or-open-task-file-prefix-still-opens-directory-for-empty-name ()
+  "Test that a prefix arg still opens the task directory for an empty task name."
   (ai-code-with-test-repo
    (let* ((files-dir (expand-file-name ".ai.code.files" git-root))
           (dired-called nil)
