@@ -744,15 +744,24 @@ ENTRY may be a path string or a symbol whose value is a path string."
 
 (defun ai-code--build-note-search-prompt (scopes search-description)
   "Build a prompt for searching SCOPES for SEARCH-DESCRIPTION."
-  (format
-   (concat
-    "Search my notes and related files for: %s\n"
-    "Search scope paths:\n%s\n"
-    "Use the available search tools to inspect the selected paths.\n"
-    "Focus on relevant information inside files, not just file names.\n"
-    "Return the most relevant paths, matched excerpts, and a concise answer.")
-   search-description
-   (mapconcat (lambda (scope) (format "- %s" scope)) scopes "\n")))
+  (let ((git-root-truename
+         (when-let ((git-root (ai-code--git-root)))
+           (file-truename git-root))))
+    (format
+     (concat
+      "Search my notes and related files for: %s\n"
+      "Search scope paths:\n%s\n"
+      "Use the available search tools to inspect the selected paths.\n"
+      "Focus on relevant information inside files, not just file names.\n"
+      "Return the most relevant paths, matched excerpts, and a concise answer.")
+     search-description
+     (mapconcat
+      (lambda (scope)
+        (format "- %s"
+                (if git-root-truename
+                    (ai-code--candidate-path scope git-root-truename)
+                  scope)))
+      scopes "\n"))))
 
 (defun ai-code--search-task-files-with-ai (ai-code-files-dir)
   "Prompt for task file search inputs and send a search request to AI."

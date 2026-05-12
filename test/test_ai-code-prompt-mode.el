@@ -373,7 +373,7 @@ and ensures everything is cleaned up afterward."
   (ai-code-with-test-repo
    (let* ((files-dir (expand-file-name ".ai.code.files" git-root))
           (roam-dir (expand-file-name "roam" git-root))
-          (external-dir (make-temp-file "ai-code-note-search" t))
+          (external-dir (make-temp-file "ai-code-external-notes" t))
           (org-roam-directory roam-dir)
           (ai-code-note-search-additional-paths (list 'org-roam-directory external-dir))
           (asked-scopes nil)
