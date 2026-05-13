@@ -525,14 +525,6 @@ for example `org-roam-directory'."
            (symbol :tag "Variable")))
   :group 'ai-code)
 
-(defcustom ai-code-note-search-data-source-instructions
-  '("Prefer MCP servers as data sources when available."
-    "Otherwise use the available search tools to inspect the selected paths.")
-  "List of instruction strings for note-search prompt tool usage.
-Each entry should be a single instruction string for tool or data-source guidance."
-  :type '(repeat string)
-  :group 'ai-code)
-
 (defun ai-code--get-files-directory ()
   "Get the task directory path.
 If in a git repository, return `.ai.code.files/` under git root.
@@ -763,14 +755,12 @@ exist, prompt once to optionally include them as well."
   "Build a prompt for searching SCOPES for SEARCH-DESCRIPTION."
   (let ((git-root-truename
          (when-let ((git-root (ai-code--git-root)))
-           (file-truename git-root)))
-        (instruction-block
-         (mapconcat #'identity ai-code-note-search-data-source-instructions "\n")))
+           (file-truename git-root))))
     (format
      (concat
        "Search my notes and related files for: %s\n"
        "Search scope paths:\n%s\n"
-       "%s\n"
+       "Use the available search tools to inspect the selected paths.\n"
        "Focus on relevant information inside files, not just file names.\n"
        "Return the most relevant paths, matched excerpts, and a concise answer.")
       search-description
@@ -780,8 +770,7 @@ exist, prompt once to optionally include them as well."
                  (if git-root-truename
                      (ai-code--candidate-path scope git-root-truename)
                    scope)))
-       scopes "\n")
-      instruction-block)))
+       scopes "\n"))))
 
 (defun ai-code--search-task-files-with-ai (ai-code-files-dir)
   "Prompt for task file search inputs and send a search request to AI."
