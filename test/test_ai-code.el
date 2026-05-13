@@ -293,9 +293,9 @@
     (should (equal (plist-get (cdr suffix) :description)
                    "Create/Open task file"))))
 
-(ert-deftest ai-code-test-menu-agile-development-binds-o-to-note-search ()
-  "Test that Agile Development menu exposes AI note search on o."
-  (let ((suffix (transient-get-suffix 'ai-code--menu-agile-development "o")))
+(ert-deftest ai-code-test-menu-agile-development-binds-slash-to-note-search ()
+  "Test that Agile Development menu exposes AI note search on /."
+  (let ((suffix (transient-get-suffix 'ai-code--menu-agile-development "/")))
     (should suffix)
     (should (eq (plist-get (cdr suffix) :command)
                 'ai-code-search-notes-with-ai))
