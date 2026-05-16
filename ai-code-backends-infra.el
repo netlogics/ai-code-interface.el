@@ -18,6 +18,7 @@
 (require 'cl-lib)
 (require 'project)
 (require 'subr-x)
+(require 'ai-code-session)
 (require 'ai-code-session-link)
 ;; Terminal-specific implementations live in dedicated modules so this
 ;; file can stay focused on shared session orchestration.
@@ -133,6 +134,12 @@ being sent for the response completion.")
 
 (defvar-local ai-code-backends-infra--session-terminal-backend nil
   "Terminal backend used by the current session buffer.")
+
+(defvar-local ai-code-backends-infra--session-prefix nil
+  "Backend prefix associated with the current session buffer.")
+
+(defvar-local ai-code-backends-infra--session-task-file nil
+  "Task file associated with the current session buffer, when available.")
 
 (defvar-local ai-code-backends-infra--multiline-input-sequence nil
   "Terminal sequence sent for multiline input in the current session buffer.")
@@ -749,11 +756,40 @@ SOURCE-BUFFER unless FORCE-PROMPT is non-nil."
              (> (length ai-code-backends-infra--session-directory) 0))
         (ai-code-backends-infra--normalize-session-directory
          ai-code-backends-infra--session-directory))
-       ((and (stringp default-directory)
-             (> (length default-directory) 0))
-        (ai-code-backends-infra--normalize-session-directory
-         default-directory))
-       (t nil)))))
+        ((and (stringp default-directory)
+              (> (length default-directory) 0))
+         (ai-code-backends-infra--normalize-session-directory
+          default-directory))
+        (t nil)))))
+
+(defun ai-code-backends-infra--source-task-file (source-buffer)
+  "Return the AI task file associated with SOURCE-BUFFER, or nil."
+  (when (buffer-live-p source-buffer)
+    (with-current-buffer source-buffer
+      (when (and (stringp buffer-file-name)
+                 (string-suffix-p ".org" buffer-file-name)
+                 (or (eq major-mode 'ai-code-prompt-mode)
+                     (string-match-p "/\\.ai\\.code\\.files/" buffer-file-name)))
+        (expand-file-name buffer-file-name)))))
+
+(defun ai-code-backends-infra--sync-session-registry (buffer working-dir prefix
+                                                             &optional task-file)
+  "Register or update BUFFER in the AI session registry.
+WORKING-DIR is the session root.  PREFIX identifies the backend.
+TASK-FILE records the originating AI task file when available."
+  (when (buffer-live-p buffer)
+    (let ((resolved-task-file
+           (or task-file
+               (with-current-buffer buffer
+                 ai-code-backends-infra--session-task-file))))
+      (with-current-buffer buffer
+        (setq-local ai-code-backends-infra--session-prefix prefix)
+        (setq-local ai-code-backends-infra--session-task-file resolved-task-file))
+      (ai-code-session-register
+       :buffer buffer
+       :backend prefix
+       :repo-root working-dir
+       :task-file resolved-task-file))))
 
 (defun ai-code-backends-infra--session-buffer-name (prefix directory &optional instance-name)
   "Return a session buffer name for PREFIX in DIRECTORY.
@@ -953,11 +989,12 @@ any error output left behind by the CLI."
                                      (ai-code-backends-infra--session-instance-name
                                       buffer-name
                                       prefix))
-                                "default"))
+                                 "default"))
          (key (ai-code-backends-infra--session-key directory resolved-instance)))
     (remhash key process-table))
   (when-let ((buffer (get-buffer buffer-name)))
     (ai-code-backends-infra--forget-session-buffer prefix directory buffer)
+    (ai-code-session-unregister buffer)
     (when (buffer-live-p buffer)
       (when (or (null event)
                 (string-prefix-p "finished" event))
@@ -1028,9 +1065,11 @@ Return a plist with target information plus the current buffer and process."
                   :existing-process (gethash session-key process-table)))))
 
 (defun ai-code-backends-infra--reuse-session-window (buffer working-dir
-                                                            prefix multiline-input-sequence)
+                                                            prefix multiline-input-sequence
+                                                            &optional task-file)
   "Toggle visibility for an existing session BUFFER.
-WORKING-DIR, PREFIX, and MULTILINE-INPUT-SEQUENCE refresh session state.
+WORKING-DIR, PREFIX, MULTILINE-INPUT-SEQUENCE, and TASK-FILE refresh session
+state.
 When BUFFER is already visible, close its window.
 Otherwise refresh session-local state and display it."
   (if (get-buffer-window buffer)
@@ -1039,18 +1078,22 @@ Otherwise refresh session-local state and display it."
     (ai-code-backends-infra--configure-session-buffer
      buffer nil multiline-input-sequence)
     (ai-code-backends-infra--remember-session-buffer prefix working-dir buffer)
+    (ai-code-backends-infra--sync-session-registry
+     buffer working-dir prefix task-file)
     (ai-code-backends-infra--display-buffer-in-side-window buffer)))
 
 (defun ai-code-backends-infra--finalize-started-session (buffer process
-                                                                working-dir buffer-name
-                                                                process-table resolved-instance
-                                                                prefix escape-fn cleanup-fn
-                                                                multiline-input-sequence
-                                                                post-start-fn)
+                                                                 working-dir buffer-name
+                                                                 process-table resolved-instance
+                                                                 prefix escape-fn cleanup-fn
+                                                                 multiline-input-sequence
+                                                                 post-start-fn
+                                                                 &optional task-file)
   "Finalize a successfully started session BUFFER and PROCESS.
 WORKING-DIR, BUFFER-NAME, PROCESS-TABLE, RESOLVED-INSTANCE, and PREFIX
 identify the session for cleanup and reuse.  ESCAPE-FN, CLEANUP-FN,
-MULTILINE-INPUT-SEQUENCE, and POST-START-FN install session behavior."
+MULTILINE-INPUT-SEQUENCE, POST-START-FN, and TASK-FILE install session
+behavior."
   (let ((previous-sentinel
          (ignore-errors
            (process-get process 'ai-code-backends-infra--ghostel-sentinel))))
@@ -1076,12 +1119,15 @@ MULTILINE-INPUT-SEQUENCE, and POST-START-FN install session behavior."
   (with-current-buffer buffer
     (add-hook 'kill-buffer-hook
               (lambda ()
+                (ai-code-session-unregister (current-buffer))
                 (ai-code-backends-infra--forget-session-buffer
                  prefix
                  working-dir
                  (current-buffer)))
               nil t))
   (ai-code-backends-infra--remember-session-buffer prefix working-dir buffer)
+  (ai-code-backends-infra--sync-session-registry
+   buffer working-dir prefix task-file)
   (ai-code-backends-infra--display-buffer-in-side-window buffer))
 
 (defun ai-code-backends-infra--handle-session-start-failure (buffer session-key process-table)
@@ -1117,6 +1163,7 @@ session starts successfully."
   (setq process-table (or process-table ai-code-backends-infra--processes))
   (ai-code-backends-infra--cleanup-dead-processes process-table)
   (let* ((source-buffer (current-buffer))
+         (task-file (ai-code-backends-infra--source-task-file source-buffer))
          (session-context (ai-code-backends-infra--resolve-session-context
                             working-dir
                             buffer-name
@@ -1130,14 +1177,15 @@ session starts successfully."
          (existing-process (plist-get session-context :existing-process))
          (buffer (plist-get session-context :buffer)))
     (if (and existing-process (process-live-p existing-process) buffer)
-        (progn
-          (ai-code-backends-infra--reuse-session-window
-           buffer
-           working-dir
-           prefix
-           multiline-input-sequence)
-          (ai-code-backends-infra--remember-file-session-buffer
-           prefix source-buffer buffer))
+       (progn
+           (ai-code-backends-infra--reuse-session-window
+            buffer
+            working-dir
+            prefix
+            multiline-input-sequence
+            task-file)
+           (ai-code-backends-infra--remember-file-session-buffer
+            prefix source-buffer buffer))
       (let* ((buffer-and-process
               (ai-code-backends-infra--create-terminal-session
                resolved-buffer-name working-dir command env-vars))
@@ -1160,9 +1208,10 @@ session starts successfully."
                 escape-fn
                 cleanup-fn
                 multiline-input-sequence
-                post-start-fn)
-               (ai-code-backends-infra--remember-file-session-buffer
-                prefix source-buffer new-buffer))
+                post-start-fn
+                task-file)
+                (ai-code-backends-infra--remember-file-session-buffer
+                 prefix source-buffer new-buffer))
            (ai-code-backends-infra--handle-session-start-failure
             new-buffer
             session-key
