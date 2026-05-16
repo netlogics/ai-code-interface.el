@@ -620,12 +620,12 @@ Includes stored context entries for the current Git repository if available."
     (let ((repo-root (ai-code--git-root)))
       (when repo-root
         (let ((entries (gethash repo-root ai-code--repo-context-info)))
-          (when entries
-            (concat "\nStored repository context:\n"
-                     (mapconcat (lambda (ctx)
-                                  (concat "  - " ctx))
-                                (reverse entries)
-                                "\n"))))))))
+           (when entries
+             (concat "\nStored repository context:\n"
+                    (mapconcat (lambda (ctx)
+                                 (concat "  - " ctx))
+                               (reverse entries)
+                               "\n"))))))))
 
 (defun ai-code--derive-ddd-context-prompt (git-root)
   "Build and return a formatted DDD context derivation prompt string for GIT-ROOT."
