@@ -628,7 +628,7 @@ Includes stored context entries for the current Git repository if available."
                                 "\n"))))))))
 
 (defun ai-code--derive-ddd-context-prompt (git-root)
-  "Return the default DDD context derivation prompt for GIT-ROOT."
+  "Return the default multi-line DDD context derivation prompt for GIT-ROOT."
   (concat
    "Derive a lightweight Domain-Driven Design (DDD) style context document for this existing repository.\n"
    "Do not assume the repository already follows DDD today.\n"
@@ -660,8 +660,7 @@ Includes stored context entries for the current Git repository if available."
     (let* ((files-dir (ai-code--ensure-files-directory))
            (domain-dir (expand-file-name "domain" files-dir))
            (target-file (expand-file-name "domain-context.md" domain-dir)))
-      (unless (file-directory-p domain-dir)
-        (make-directory domain-dir t))
+      (make-directory domain-dir t)
       (unless (file-exists-p target-file)
         (write-region "" nil target-file nil 'silent))
       (let* ((initial-prompt
