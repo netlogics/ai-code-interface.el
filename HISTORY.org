@@ -2,6 +2,11 @@
 * Release history
 
 ** Main branch change
+
+** 1.80
+- Improve Ghostel terminal integration
+- Fix vterm resize rendering for AI sessions, by cjf-666
+- Chore: Route prompts to visible AI session buffers
 - Fix: Rebind file buffers when starting a new AI session
 - Feat: Add dedicated AI note search with a separate menu key
 - Feat: Redesign ai-code-take-notes for Org and Org-roam integration
