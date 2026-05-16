@@ -653,23 +653,25 @@ Includes stored context entries for the current Git repository if available."
 
 ;;;###autoload
 (defun ai-code-derive-ddd-context ()
-  "Ask AI to derive a lightweight DDD context document for the current repo."
+  "Ask AI to derive a lightweight DDD context document for the current repo.
+Ensures the target Markdown file exists first so the backend has a concrete
+document to create or update under `.ai.code.files/domain/`."
   (interactive)
-  (let ((git-root (or (ai-code--git-root)
-                      (user-error "Not inside a Git repository"))))
-    (let* ((files-dir (ai-code--ensure-files-directory))
-           (domain-dir (expand-file-name "domain" files-dir))
-           (target-file (expand-file-name "domain-context.md" domain-dir)))
-      (make-directory domain-dir t)
-      (unless (file-exists-p target-file)
-        (write-region "" nil target-file nil 'silent))
-      (let* ((initial-prompt
-              (concat (ai-code--derive-ddd-context-prompt git-root)
-                      (or (ai-code--format-repo-context-info) "")))
-             (final-prompt (ai-code-read-string "Derive DDD context prompt: "
-                                                initial-prompt)))
-        (when final-prompt
-          (ai-code--insert-prompt final-prompt))))))
+  (let* ((git-root (or (ai-code--git-root)
+                       (user-error "Not inside a Git repository")))
+         (files-dir (ai-code--ensure-files-directory))
+         (domain-dir (expand-file-name "domain" files-dir))
+         (target-file (expand-file-name "domain-context.md" domain-dir)))
+    (make-directory domain-dir t)
+    (unless (file-exists-p target-file)
+      (write-region "" nil target-file nil 'silent))
+    (let* ((initial-prompt
+            (concat (ai-code--derive-ddd-context-prompt git-root)
+                    (or (ai-code--format-repo-context-info) "")))
+           (final-prompt (ai-code-read-string "Derive DDD context prompt: "
+                                              initial-prompt)))
+      (when final-prompt
+        (ai-code--insert-prompt final-prompt)))))
 
 ;;;###autoload
 (defun ai-code-toggle-current-buffer-dedicated (arg)
