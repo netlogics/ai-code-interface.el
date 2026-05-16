@@ -189,8 +189,8 @@
   "Test that session checkpoint sends the expected fixed prompt."
   (let (sent-command switched)
     (cl-letf (((symbol-function 'ai-code-cli-send-command)
-               (lambda (command)
-                 (setq sent-command command)))
+               (lambda (&rest args)
+                 (setq sent-command (car args))))
               ((symbol-function 'ai-code-cli-switch-to-buffer)
                (lambda (&rest _args)
                  (setq switched t))))
@@ -203,9 +203,7 @@
 (ert-deftest ai-code-test-menu-other-tools-includes-session-checkpoint-entry ()
   "Test that the Other Tools menu exposes AI session checkpoint."
   (let* ((suffix (transient-get-suffix 'ai-code--menu-other-tools "P"))
-         (definition (if (keywordp (car-safe (cdr suffix)))
-                         (cdr suffix)
-                       (nth 2 suffix))))
+         (definition (cdr suffix)))
     (should suffix)
     (should (eq (plist-get definition :command)
                 'ai-code-session-checkpoint))
