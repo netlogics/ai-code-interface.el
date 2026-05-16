@@ -21,6 +21,7 @@
 (declare-function ai-code-read-string "ai-code-input")
 (declare-function ai-code--get-context-files-string "ai-code-input")
 (declare-function ai-code--insert-prompt "ai-code-prompt-mode" (prompt-text))
+(declare-function ai-code--ensure-files-directory "ai-code-prompt-mode" ())
 (declare-function ai-code--process-word-for-filepath "ai-code-prompt-mode" (word git-root-truename))
 (declare-function ai-code-call-gptel-sync "ai-code-prompt-mode" (prompt))
 (declare-function ai-code--extract-radar-id "ai-code-prompt-mode" (text))
@@ -53,6 +54,10 @@ a Git repository or when `magit-toplevel' signals an error."
 (defvar ai-code-cli)
 (defvar ai-code-selected-backend)
 (defvar ai-code-task-use-gptel-filename)
+
+(defconst ai-code-ddd-context-output-relative-path
+  ".ai.code.files/domain/domain-context.md"
+  "Repository-relative path for the derived DDD context document.")
 
 (defun ai-code--resolve-auto-test-suffix-for-current-send ()
   "Return auto test suffix for this send action in file operations."
@@ -617,10 +622,55 @@ Includes stored context entries for the current Git repository if available."
         (let ((entries (gethash repo-root ai-code--repo-context-info)))
           (when entries
             (concat "\nStored repository context:\n"
-                    (mapconcat (lambda (ctx)
-                                 (concat "  - " ctx))
-                               (reverse entries)
-                               "\n"))))))))
+                     (mapconcat (lambda (ctx)
+                                  (concat "  - " ctx))
+                                (reverse entries)
+                                "\n"))))))))
+
+(defun ai-code--derive-ddd-context-prompt (git-root)
+  "Return the default DDD context derivation prompt for GIT-ROOT."
+  (concat
+   "Derive a lightweight Domain-Driven Design (DDD) style context document for this existing repository.\n"
+   "Do not assume the repository already follows DDD today.\n"
+   "Do not invent an ideal architecture.\n"
+   "Infer domain terms, bounded context candidates, core flows, invariants, and testing ideas from the actual code, tests, docs, filenames, and existing behavior.\n"
+   "Mark uncertainty explicitly.\n"
+   "Keep the output practical, concise, and useful for future AI coding tasks.\n"
+   "Do not suggest large refactors unless you list them separately as optional future ideas.\n"
+   (format "Repository root: %s\n" git-root)
+   (format "Create or update the Markdown file at %s.\n\n"
+           ai-code-ddd-context-output-relative-path)
+   "Use this structure:\n"
+   "# Domain Context\n\n"
+   "## Purpose\n"
+   "## Ubiquitous Language\n"
+   "## Main Domain Concepts\n"
+   "## Bounded Context Candidates\n"
+   "## Core Flows\n"
+   "## Domain Invariants / Business Rules\n"
+   "## Testing Ideas\n"
+   "## Notes and Uncertainties"))
+
+;;;###autoload
+(defun ai-code-derive-ddd-context ()
+  "Ask AI to derive a lightweight DDD context document for the current repo."
+  (interactive)
+  (let ((git-root (or (ai-code--git-root)
+                      (user-error "Not inside a Git repository"))))
+    (let* ((files-dir (ai-code--ensure-files-directory))
+           (domain-dir (expand-file-name "domain" files-dir))
+           (target-file (expand-file-name "domain-context.md" domain-dir)))
+      (unless (file-directory-p domain-dir)
+        (make-directory domain-dir t))
+      (unless (file-exists-p target-file)
+        (write-region "" nil target-file nil 'silent))
+      (let* ((initial-prompt
+              (concat (ai-code--derive-ddd-context-prompt git-root)
+                      (or (ai-code--format-repo-context-info) "")))
+             (final-prompt (ai-code-read-string "Derive DDD context prompt: "
+                                                initial-prompt)))
+        (when final-prompt
+          (ai-code--insert-prompt final-prompt))))))
 
 ;;;###autoload
 (defun ai-code-toggle-current-buffer-dedicated (arg)

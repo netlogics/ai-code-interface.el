@@ -608,6 +608,65 @@ everything is cleaned up afterward."
              (lambda (&optional _dir) (error "Not a git repository"))))
     (should (null (ai-code--git-root)))))
 
+(ert-deftest ai-code-test-derive-ddd-context-creates-target-file-and-sends-prompt ()
+  "Derive DDD context should create the target file and send the default prompt."
+  (ai-code-file-with-test-env
+   (let (captured-read-prompt
+         captured-initial-prompt
+         inserted-prompt)
+     (cl-letf (((symbol-function 'ai-code--git-root)
+                (lambda (&optional _dir)
+                  default-directory))
+               ((symbol-function 'ai-code-read-string)
+                (lambda (prompt &optional initial-input &rest _args)
+                  (setq captured-read-prompt prompt
+                        captured-initial-prompt initial-input)
+                  initial-input))
+               ((symbol-function 'ai-code--insert-prompt)
+                (lambda (prompt)
+                  (setq inserted-prompt prompt))))
+       (ai-code-derive-ddd-context)
+       (should (equal captured-read-prompt "Derive DDD context prompt: "))
+       (should (string-match-p
+                "Domain-Driven Design (DDD) style context document"
+                captured-initial-prompt))
+       (should (string-match-p
+                "\\.ai\\.code\\.files/domain/domain-context\\.md"
+                captured-initial-prompt))
+       (should (string-match-p "## Notes and Uncertainties" captured-initial-prompt))
+       (should (equal inserted-prompt captured-initial-prompt))
+       (should (file-exists-p
+                (expand-file-name ".ai.code.files/domain/domain-context.md"
+                                  default-directory)))))))
+
+(ert-deftest ai-code-test-derive-ddd-context-includes-stored-repo-context ()
+  "Derive DDD context should append stored repo context when present."
+  (ai-code-file-with-test-env
+   (let (inserted-prompt)
+     (cl-letf (((symbol-function 'ai-code--git-root)
+                (lambda (&optional _dir)
+                  default-directory))
+               ((symbol-function 'ai-code--format-repo-context-info)
+                (lambda ()
+                  "\nStored repository context:\n  - Preserve existing CLI UX"))
+               ((symbol-function 'ai-code-read-string)
+                (lambda (_prompt &optional initial-input &rest _args)
+                  initial-input))
+               ((symbol-function 'ai-code--insert-prompt)
+                (lambda (prompt)
+                  (setq inserted-prompt prompt))))
+       (ai-code-derive-ddd-context)
+       (should (string-match-p
+                "Stored repository context:\n  - Preserve existing CLI UX"
+                inserted-prompt))))))
+
+(ert-deftest ai-code-test-derive-ddd-context-errors-outside-git-repo ()
+  "Derive DDD context should require a Git repository."
+  (cl-letf (((symbol-function 'ai-code--git-root)
+             (lambda (&optional _dir)
+               nil)))
+    (should-error (ai-code-derive-ddd-context) :type 'user-error)))
+
 ;;; Tests for ai-code-context-action with completing-read
 
 (ert-deftest ai-code-test-context-action-add-calls-add-context ()

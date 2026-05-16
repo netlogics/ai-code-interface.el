@@ -417,6 +417,7 @@ Shows the current backend label to the right."
   (ai-code--infix-toggle-suffix)
   ("c" "Code change (C-u: clipboard)" ai-code-code-change)
   ("i" "Implement TODO (C-u: clipboard)" ai-code-implement-todo)
+  ("o" "Derive DDD Context for Repo" ai-code-derive-ddd-context)
   ("q" "Ask question (C-u: clipboard)" ai-code-ask-question)
   ("x" "Explain code in scope" ai-code-explain)
   ("<SPC>" "Send command (C-u: context)" ai-code-send-command)
