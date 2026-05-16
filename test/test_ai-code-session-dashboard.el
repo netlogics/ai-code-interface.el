@@ -44,7 +44,7 @@
                      ((symbol-function 'magit-get-current-branch)
                       (lambda () "feature/x"))
                      ((symbol-function 'magit-git-lines)
-                      (lambda (&rest _args) 3))
+                      (lambda (&rest _args) '("a" "b" "c")))
                      ((symbol-function 'pop-to-buffer)
                       (lambda (buffer &rest _args)
                         (setq dashboard-buffer buffer)

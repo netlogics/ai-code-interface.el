@@ -161,7 +161,8 @@ describe the session.  ID is optional and mainly useful when restoring state."
   (when (and repo-root (file-directory-p repo-root))
     (let ((default-directory repo-root))
       (ignore-errors
-        (magit-git-lines "status" "--porcelain" "--untracked-files=normal")))))
+        (length
+         (magit-git-lines "status" "--porcelain" "--untracked-files=normal"))))))
 
 (defun ai-code-session--default-metadata (session)
   "Return refreshed metadata plist for SESSION."

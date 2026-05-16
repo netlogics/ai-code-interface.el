@@ -53,7 +53,7 @@
                    ((symbol-function 'magit-get-current-branch)
                     (lambda () "feature/dashboard"))
                    ((symbol-function 'magit-git-lines)
-                    (lambda (&rest _args) 3)))
+                    (lambda (&rest _args) '("a" "b" "c"))))
            (let ((session (ai-code-session-register
                            :buffer buffer
                            :backend "codex"
