@@ -84,6 +84,12 @@
      (ai-code-session-refresh)
      (should-not (ai-code-session-list)))))
 
+(ert-deftest ai-code-test-session-get-invalid-targets-return-nil ()
+  "Invalid `ai-code-session-get' targets should return nil."
+  (ai-code-test-session--with-clean-registry
+   (should-not (ai-code-session-get nil))
+   (should-not (ai-code-session-get "missing-session-id"))))
+
 (provide 'test_ai-code-session)
 
 ;;; test_ai-code-session.el ends here

@@ -143,6 +143,45 @@
        (when (buffer-live-p dashboard-buffer)
          (kill-buffer dashboard-buffer))))))
 
+(ert-deftest ai-code-test-session-dashboard-kill-session-removes-registry-entry ()
+  "Killing a running dashboard session should unregister it."
+  (ai-code-test-session-dashboard--with-clean-state
+   (let ((session-buffer (get-buffer-create "*codex[kill]*"))
+         (repo-root (make-temp-file "ai-code-dashboard-kill-" t))
+         dashboard-buffer
+         process)
+     (unwind-protect
+         (progn
+           (setq process (start-process "ai-code-dashboard-kill" session-buffer
+                                        "sleep" "60"))
+           (set-process-query-on-exit-flag process nil)
+           (ai-code-session-register
+            :buffer session-buffer
+            :backend "codex"
+            :repo-root repo-root
+            :metadata '(:status "running" :dirty-count 0))
+           (cl-letf (((symbol-function 'y-or-n-p)
+                      (lambda (&rest _args) t))
+                     ((symbol-function 'pop-to-buffer)
+                      (lambda (buffer &rest _args)
+                        (setq dashboard-buffer buffer)
+                        (get-buffer-window buffer))))
+             (ai-code-session-dashboard)
+             (with-current-buffer dashboard-buffer
+               (ai-code-test-session-dashboard--goto-first-entry)
+               (ai-code-session-dashboard-kill-session))
+             (should-not (ai-code-session-list))
+             (should-not (buffer-live-p session-buffer))
+             (should-not (process-live-p process))))
+       (when (and process (process-live-p process))
+         (delete-process process))
+       (when (buffer-live-p session-buffer)
+         (kill-buffer session-buffer))
+       (when (file-directory-p repo-root)
+         (delete-directory repo-root t))
+       (when (buffer-live-p dashboard-buffer)
+         (kill-buffer dashboard-buffer))))))
+
 (provide 'test_ai-code-session-dashboard)
 
 ;;; test_ai-code-session-dashboard.el ends here
