@@ -680,43 +680,52 @@ This value is used by `ai-code-take-notes' when suggesting where to store notes.
   "Default request text for `ai-code-take-notes'.")
 
 (defconst ai-code-discussion--architecture-guardrails-file-name
-  "architecture-guardrails.md"
+  "guardrails.org"
   "File name for derived architecture guardrails.")
+
+(defconst ai-code-discussion--architecture-guardrails-directory-name
+  "architecture"
+  "Directory name for derived architecture guardrails.")
 
 (defconst ai-code-discussion--architecture-guardrails-template
   (mapconcat #'identity
-             '("# Architecture Guardrails"
+             '("#+TITLE: Architecture Guardrails"
                ""
-               "## Purpose"
+               "* Purpose"
                ""
-               "## Important Modules / Areas"
+               "* Important Modules / Areas"
                ""
-               "## Dependency Rules"
+               "* Dependency Rules"
                ""
-               "## State and Ownership Rules"
+               "* State and Ownership Rules"
                ""
-               "## AI Change Rules"
+               "* AI Change Rules"
                ""
-               "## Required Validation"
+               "* Required Validation"
                ""
-               "## Notes and Uncertainties"
+               "* Notes and Uncertainties"
                "")
              "\n")
-  "Initial Markdown template for architecture guardrails.")
+  "Initial Org template for architecture guardrails.")
 
 (defun ai-code--architecture-guardrails-relative-path ()
   "Return the repo-relative path for the architecture guardrails file."
   (concat ai-code-files-dir-name "/"
+          ai-code-discussion--architecture-guardrails-directory-name "/"
           ai-code-discussion--architecture-guardrails-file-name))
 
 (defun ai-code--architecture-guardrails-file-path ()
   "Return the absolute path for the architecture guardrails file."
   (expand-file-name ai-code-discussion--architecture-guardrails-file-name
-                    (ai-code--ensure-files-directory)))
+                    (expand-file-name
+                     ai-code-discussion--architecture-guardrails-directory-name
+                     (ai-code--ensure-files-directory))))
 
 (defun ai-code--ensure-architecture-guardrails-file ()
   "Create the architecture guardrails file with a starter template if missing."
   (let ((target-file (ai-code--architecture-guardrails-file-path)))
+    (unless (file-directory-p (file-name-directory target-file))
+      (make-directory (file-name-directory target-file) t))
     (unless (file-exists-p target-file)
       (with-temp-file target-file
         (insert ai-code-discussion--architecture-guardrails-template)))
@@ -728,30 +737,30 @@ This value is used by `ai-code-take-notes' when suggesting where to store notes.
     (mapconcat
      #'identity
      (list "Derive a lightweight architecture guardrails document for this existing repository."
-           (format "Repository path: %s" git-root)
-           (format "Write or update @%s." relative-path)
-           ""
-           "Infer practical module boundaries, dependency rules, state ownership rules, and validation expectations from the current code, tests, docs, and filenames."
-           "Do not invent an ideal architecture."
-           "Do not force DDD, Hexagonal Architecture, or Clean Architecture onto the repository."
-           "Prefer simple, practical rules over abstract architecture theory."
-           "Mark uncertain conclusions clearly."
-           "Focus on what helps future AI coding sessions avoid breaking boundaries or introducing messy dependencies."
-           "Do not suggest large refactors unless clearly separated as optional future ideas."
-           "Keep it concise, practical, and small enough to reuse in future AI prompts."
-           ""
-           "Use this structure:"
-           "# Architecture Guardrails"
-           ""
-           "## Purpose"
-           "## Important Modules / Areas"
-           "## Dependency Rules"
-           "## State and Ownership Rules"
-           "## AI Change Rules"
-           "## Required Validation"
-           "## Notes and Uncertainties"
-           ""
-           "If the file already exists, refine it instead of rewriting unrelated guidance.")
+            (format "Repository path: %s" git-root)
+            (format "Write or update @%s in Org-mode format." relative-path)
+            ""
+            "Infer practical module boundaries, dependency rules, state ownership rules, and validation expectations from the current code, tests, docs, and filenames."
+            "Do not invent an ideal architecture."
+            "Do not force DDD, Hexagonal Architecture, or Clean Architecture onto the repository."
+            "Prefer simple, practical rules over abstract architecture theory."
+            "Mark uncertain conclusions clearly."
+            "Focus on what helps future AI coding sessions avoid breaking boundaries or introducing messy dependencies."
+            "Do not suggest large refactors unless clearly separated as optional future ideas."
+            "Keep it concise, practical, and small enough to reuse in future AI prompts."
+            ""
+            "Use this Org structure:"
+            "#+TITLE: Architecture Guardrails"
+            ""
+            "* Purpose"
+            "* Important Modules / Areas"
+            "* Dependency Rules"
+            "* State and Ownership Rules"
+            "* AI Change Rules"
+            "* Required Validation"
+            "* Notes and Uncertainties"
+            ""
+            "If the file already exists, refine it instead of rewriting unrelated guidance.")
      "\n")))
 
 ;;;###autoload

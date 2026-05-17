@@ -448,9 +448,9 @@
       (should (equal captured-file "/tmp/project/.ai.code.files/test-notes.org")))))
 
 (ert-deftest ai-code-test-derive-architecture-guardrails-creates-template-and-prompt ()
-  "Test `ai-code-derive-architecture-guardrails' initializes the Markdown file and prompt."
+  "Test `ai-code-derive-architecture-guardrails' initializes the Org file and prompt."
   (let* ((tmp-root (make-temp-file "ai-code-guardrails" t))
-         (target-file (expand-file-name ".ai.code.files/architecture-guardrails.md" tmp-root))
+         (target-file (expand-file-name ".ai.code.files/architecture/guardrails.org" tmp-root))
          captured-initial-prompt
          captured-final-prompt)
     (unwind-protect
@@ -469,11 +469,11 @@
           (should (file-exists-p target-file))
           (with-temp-buffer
             (insert-file-contents target-file)
-            (should (string-match-p (regexp-quote "# Architecture Guardrails")
+            (should (string-match-p (regexp-quote "#+TITLE: Architecture Guardrails")
                                     (buffer-string)))
-            (should (string-match-p (regexp-quote "## Dependency Rules")
+            (should (string-match-p (regexp-quote "* Dependency Rules")
                                     (buffer-string)))
-            (should (string-match-p (regexp-quote "## Required Validation")
+            (should (string-match-p (regexp-quote "* Required Validation")
                                     (buffer-string))))
           (should (string-match-p (regexp-quote "Derive a lightweight architecture guardrails document")
                                   captured-initial-prompt))
@@ -483,7 +483,9 @@
                                   captured-initial-prompt))
           (should (string-match-p (regexp-quote "Keep it concise")
                                   captured-initial-prompt))
-          (should (string-match-p (regexp-quote "@.ai.code.files/architecture-guardrails.md")
+          (should (string-match-p (regexp-quote "@.ai.code.files/architecture/guardrails.org")
+                                  captured-initial-prompt))
+          (should (string-match-p (regexp-quote "Org-mode format")
                                   captured-initial-prompt))
           (should (equal captured-final-prompt captured-initial-prompt)))
       (ignore-errors (delete-directory tmp-root t)))))
@@ -491,9 +493,9 @@
 (ert-deftest ai-code-test-derive-architecture-guardrails-preserves-existing-file ()
   "Test `ai-code-derive-architecture-guardrails' does not overwrite an existing file."
   (let* ((tmp-root (make-temp-file "ai-code-guardrails-existing" t))
-         (files-dir (expand-file-name ".ai.code.files" tmp-root))
-         (target-file (expand-file-name "architecture-guardrails.md" files-dir))
-         (existing-content "# Existing guardrails\n"))
+         (files-dir (expand-file-name ".ai.code.files/architecture" tmp-root))
+         (target-file (expand-file-name "guardrails.org" files-dir))
+         (existing-content "#+TITLE: Existing guardrails\n"))
     (unwind-protect
         (progn
           (make-directory files-dir t)
