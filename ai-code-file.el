@@ -56,7 +56,7 @@ a Git repository or when `magit-toplevel' signals an error."
 (defvar ai-code-task-use-gptel-filename)
 
 (defconst ai-code-ddd-context-output-relative-path
-  ".ai.code.files/domain/domain-context.org"
+  ".ai.code.files/architecture/domain-context.org"
   "Repository-relative path for the derived DDD context document.")
 
 (defun ai-code--resolve-auto-test-suffix-for-current-send ()
@@ -638,8 +638,8 @@ Includes stored context entries for the current Git repository if available."
    "Keep the output practical, concise, and useful for future AI coding tasks.\n"
    "Do not suggest large refactors unless you list them separately as optional future ideas.\n"
    (format "Repository root: %s\n" git-root)
-   (format "Create or update the Markdown file at %s.\n\n"
-           ai-code-ddd-context-output-relative-path)
+   (format "Create or update the Org file at %s.\n\n"
+            ai-code-ddd-context-output-relative-path)
    "Use this structure:\n"
    "# Domain Context\n\n"
    "## Purpose\n"
@@ -654,15 +654,15 @@ Includes stored context entries for the current Git repository if available."
 ;;;###autoload
 (defun ai-code-derive-ddd-context ()
   "Ask AI to derive a lightweight DDD context document for the current repo.
-The target Markdown file under `.ai.code.files/domain/` is created if it does
+The target Org file under `.ai.code.files/architecture/` is created if it does
 not already exist, so the backend has a concrete document to create or update."
   (interactive)
   (let* ((git-root (or (ai-code--git-root)
                        (user-error "Not inside a Git repository")))
          (files-dir (ai-code--ensure-files-directory))
-         (domain-dir (expand-file-name "domain" files-dir))
-         (target-file (expand-file-name "domain-context.org" domain-dir)))
-    (make-directory domain-dir t)
+         (architecture-dir (expand-file-name "architecture" files-dir))
+         (target-file (expand-file-name "domain-context.org" architecture-dir)))
+    (make-directory architecture-dir t)
     (unless (file-exists-p target-file)
       (write-region "" nil target-file nil 'silent))
     (let* ((initial-prompt
