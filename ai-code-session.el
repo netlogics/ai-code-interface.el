@@ -190,6 +190,10 @@ describe the session.  ID is optional and mainly useful when restoring state."
 (defconst ai-code-session-dashboard-buffer-name "*AI Code Sessions*"
   "Buffer name used by the AI session dashboard.")
 
+(defconst ai-code-session-dashboard-footer
+  "Keys: RET visit session   r/g refresh   k kill session   D magit status"
+  "Footer help shown at the bottom of the AI session dashboard.")
+
 (defun ai-code-session-dashboard--repo-name (session)
   "Return a short repository name for SESSION."
   (when-let ((repo-root (ai-code-session-repo-root session)))
@@ -298,6 +302,9 @@ describe the session.  ID is optional and mainly useful when restoring state."
          ("Status" 12 t)
          ("Dirty files" 11 t)])
   (setq tabulated-list-padding 2)
+  (setq-local footer-line-format
+              (propertize ai-code-session-dashboard-footer
+                          'face 'mode-line-inactive))
   (add-hook 'tabulated-list-revert-hook #'ai-code-session-dashboard-refresh nil t)
   (tabulated-list-init-header))
 

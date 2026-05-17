@@ -11,6 +11,8 @@
 (require 'cl-lib)
 (require 'ai-code-session)
 
+(defvar footer-line-format)
+
 (defmacro ai-code-test-session--with-clean-registry (&rest body)
   "Run BODY with a fresh session registry."
   `(let ((ai-code-session--sessions (make-hash-table :test 'equal))
@@ -123,13 +125,17 @@
                         (setq dashboard-buffer buffer)
                         (get-buffer-window buffer))))
              (ai-code-session-dashboard))
-           (with-current-buffer dashboard-buffer
-             (should (derived-mode-p 'ai-code-session-dashboard-mode))
-             (should (equal (length tabulated-list-entries) 1))
-             (let ((entry (cadar tabulated-list-entries)))
-               (should (equal (aref entry 1)
-                              (file-name-nondirectory
-                               (directory-file-name repo-root))))
+            (with-current-buffer dashboard-buffer
+              (should (derived-mode-p 'ai-code-session-dashboard-mode))
+              (should (equal (length tabulated-list-entries) 1))
+              (should (equal (substring-no-properties
+                              (buffer-local-value 'footer-line-format
+                                                  dashboard-buffer))
+                             ai-code-session-dashboard-footer))
+              (let ((entry (cadar tabulated-list-entries)))
+                (should (equal (aref entry 1)
+                               (file-name-nondirectory
+                                (directory-file-name repo-root))))
                (should (equal (aref entry 2) "task_x.org"))
                (should (equal (aref entry 3) "Codex"))
                (should (equal (aref entry 4) "feature/x"))
