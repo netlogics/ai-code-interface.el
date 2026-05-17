@@ -762,12 +762,14 @@ This value is used by `ai-code-take-notes' when suggesting where to store notes.
     (unless git-root
       (user-error "Not in a git repository"))
     (ai-code--ensure-architecture-guardrails-file)
-    (when-let ((final-prompt
-                (ai-code-read-string
-                 "Prompt: "
-                 (ai-code--build-architecture-guardrails-prompt git-root))))
-      (ai-code--insert-prompt final-prompt)
-      (message "Requested architecture guardrails for %s" git-root))))
+    (if-let ((final-prompt
+              (ai-code-read-string
+               "Prompt: "
+               (ai-code--build-architecture-guardrails-prompt git-root))))
+        (progn
+          (ai-code--insert-prompt final-prompt)
+          (message "Requested architecture guardrails for %s" git-root))
+      (message "Architecture guardrails request cancelled"))))
 
 (defun ai-code--get-note-candidates (default-note-file)
   "Get a list of candidate note files.

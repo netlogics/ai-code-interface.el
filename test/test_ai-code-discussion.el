@@ -521,13 +521,40 @@
     (should-error (ai-code-derive-architecture-guardrails)
                   :type 'user-error)))
 
+(ert-deftest ai-code-test-derive-architecture-guardrails-reports-cancelled-request ()
+  "Test `ai-code-derive-architecture-guardrails' reports cancellation."
+  (let* ((tmp-root (make-temp-file "ai-code-guardrails-cancel" t))
+         captured-message
+         insert-called)
+    (unwind-protect
+        (cl-letf (((symbol-function 'ai-code--git-root)
+                   (lambda (&optional _dir)
+                     tmp-root))
+                  ((symbol-function 'ai-code-read-string)
+                   (lambda (&rest _args)
+                     nil))
+                  ((symbol-function 'ai-code--insert-prompt)
+                   (lambda (&rest _args)
+                     (setq insert-called t)))
+                  ((symbol-function 'message)
+                   (lambda (format-string &rest args)
+                     (setq captured-message
+                           (apply #'format format-string args)))))
+          (ai-code-derive-architecture-guardrails)
+          (should-not insert-called)
+          (should (equal captured-message
+                         "Architecture guardrails request cancelled")))
+      (ignore-errors (delete-directory tmp-root t)))))
+
 (ert-deftest ai-code-test-menu-source-includes-derive-architecture-guardrails-entry ()
   "Test the menu source exposes the architecture guardrails command."
-  (with-temp-buffer
-    (insert-file-contents (expand-file-name "ai-code.el" default-directory))
-    (should (re-search-forward
-             "(\"A\" \"Derive Architecture Guardrails\" ai-code-derive-architecture-guardrails)"
-             nil t))))
+  (let ((repo-root
+         (file-name-directory (locate-library "ai-code-discussion"))))
+    (with-temp-buffer
+      (insert-file-contents (expand-file-name "ai-code.el" repo-root))
+      (should (re-search-forward
+               "(\"A\" \"Derive Architecture Guardrails\" ai-code-derive-architecture-guardrails)"
+               nil t)))))
 
 (provide 'test_ai-code-discussion)
 
