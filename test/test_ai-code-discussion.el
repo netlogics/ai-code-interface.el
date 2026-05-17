@@ -447,6 +447,88 @@
       (ai-code-take-notes t)
       (should (equal captured-file "/tmp/project/.ai.code.files/test-notes.org")))))
 
+(ert-deftest ai-code-test-derive-architecture-guardrails-creates-template-and-prompt ()
+  "Test `ai-code-derive-architecture-guardrails' initializes the Markdown file and prompt."
+  (let* ((tmp-root (make-temp-file "ai-code-guardrails" t))
+         (target-file (expand-file-name ".ai.code.files/architecture-guardrails.md" tmp-root))
+         captured-initial-prompt
+         captured-final-prompt)
+    (unwind-protect
+        (cl-letf (((symbol-function 'ai-code--git-root)
+                   (lambda (&optional _dir)
+                     tmp-root))
+                  ((symbol-function 'ai-code-read-string)
+                   (lambda (prompt initial-input &optional _candidate-list)
+                     (should (equal prompt "Prompt: "))
+                     (setq captured-initial-prompt initial-input)
+                     initial-input))
+                  ((symbol-function 'ai-code--insert-prompt)
+                   (lambda (prompt)
+                     (setq captured-final-prompt prompt))))
+          (ai-code-derive-architecture-guardrails)
+          (should (file-exists-p target-file))
+          (with-temp-buffer
+            (insert-file-contents target-file)
+            (should (string-match-p (regexp-quote "# Architecture Guardrails")
+                                    (buffer-string)))
+            (should (string-match-p (regexp-quote "## Dependency Rules")
+                                    (buffer-string)))
+            (should (string-match-p (regexp-quote "## Required Validation")
+                                    (buffer-string))))
+          (should (string-match-p (regexp-quote "Derive a lightweight architecture guardrails document")
+                                  captured-initial-prompt))
+          (should (string-match-p (regexp-quote "current code, tests, docs, and filenames")
+                                  captured-initial-prompt))
+          (should (string-match-p (regexp-quote "Do not invent an ideal architecture")
+                                  captured-initial-prompt))
+          (should (string-match-p (regexp-quote "Keep it concise")
+                                  captured-initial-prompt))
+          (should (string-match-p (regexp-quote "@.ai.code.files/architecture-guardrails.md")
+                                  captured-initial-prompt))
+          (should (equal captured-final-prompt captured-initial-prompt)))
+      (ignore-errors (delete-directory tmp-root t)))))
+
+(ert-deftest ai-code-test-derive-architecture-guardrails-preserves-existing-file ()
+  "Test `ai-code-derive-architecture-guardrails' does not overwrite an existing file."
+  (let* ((tmp-root (make-temp-file "ai-code-guardrails-existing" t))
+         (files-dir (expand-file-name ".ai.code.files" tmp-root))
+         (target-file (expand-file-name "architecture-guardrails.md" files-dir))
+         (existing-content "# Existing guardrails\n"))
+    (unwind-protect
+        (progn
+          (make-directory files-dir t)
+          (with-temp-file target-file
+            (insert existing-content))
+          (cl-letf (((symbol-function 'ai-code--git-root)
+                     (lambda (&optional _dir)
+                       tmp-root))
+                    ((symbol-function 'ai-code-read-string)
+                     (lambda (_prompt initial-input &optional _candidate-list)
+                       initial-input))
+                    ((symbol-function 'ai-code--insert-prompt)
+                     (lambda (_prompt))))
+            (ai-code-derive-architecture-guardrails))
+          (with-temp-buffer
+            (insert-file-contents target-file)
+            (should (equal (buffer-string) existing-content))))
+      (ignore-errors (delete-directory tmp-root t)))))
+
+(ert-deftest ai-code-test-derive-architecture-guardrails-errors-outside-git-repo ()
+  "Test `ai-code-derive-architecture-guardrails' requires a git repository."
+  (cl-letf (((symbol-function 'ai-code--git-root)
+             (lambda (&optional _dir)
+               nil)))
+    (should-error (ai-code-derive-architecture-guardrails)
+                  :type 'user-error)))
+
+(ert-deftest ai-code-test-menu-source-includes-derive-architecture-guardrails-entry ()
+  "Test the menu source exposes the architecture guardrails command."
+  (with-temp-buffer
+    (insert-file-contents (expand-file-name "ai-code.el" default-directory))
+    (should (re-search-forward
+             "(\"A\" \"Derive Architecture Guardrails\" ai-code-derive-architecture-guardrails)"
+             nil t))))
+
 (provide 'test_ai-code-discussion)
 
 ;;; test_ai-code-discussion.el ends here

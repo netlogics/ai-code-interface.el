@@ -679,6 +679,96 @@ This value is used by `ai-code-take-notes' when suggesting where to store notes.
   "Content of the most recent AI output"
   "Default request text for `ai-code-take-notes'.")
 
+(defconst ai-code-discussion--architecture-guardrails-file-name
+  "architecture-guardrails.md"
+  "File name for derived architecture guardrails.")
+
+(defconst ai-code-discussion--architecture-guardrails-template
+  (mapconcat #'identity
+             '("# Architecture Guardrails"
+               ""
+               "## Purpose"
+               ""
+               "## Important Modules / Areas"
+               ""
+               "## Dependency Rules"
+               ""
+               "## State and Ownership Rules"
+               ""
+               "## AI Change Rules"
+               ""
+               "## Required Validation"
+               ""
+               "## Notes and Uncertainties"
+               "")
+             "\n")
+  "Initial Markdown template for architecture guardrails.")
+
+(defun ai-code--architecture-guardrails-relative-path ()
+  "Return the repo-relative path for the architecture guardrails file."
+  (concat ai-code-files-dir-name "/"
+          ai-code-discussion--architecture-guardrails-file-name))
+
+(defun ai-code--architecture-guardrails-file-path ()
+  "Return the absolute path for the architecture guardrails file."
+  (expand-file-name ai-code-discussion--architecture-guardrails-file-name
+                    (ai-code--ensure-files-directory)))
+
+(defun ai-code--ensure-architecture-guardrails-file ()
+  "Create the architecture guardrails file with a starter template if missing."
+  (let ((target-file (ai-code--architecture-guardrails-file-path)))
+    (unless (file-exists-p target-file)
+      (with-temp-file target-file
+        (insert ai-code-discussion--architecture-guardrails-template)))
+    target-file))
+
+(defun ai-code--build-architecture-guardrails-prompt (git-root)
+  "Build the default prompt to derive architecture guardrails for GIT-ROOT."
+  (let ((relative-path (ai-code--architecture-guardrails-relative-path)))
+    (mapconcat
+     #'identity
+     (list "Derive a lightweight architecture guardrails document for this existing repository."
+           (format "Repository path: %s" git-root)
+           (format "Write or update @%s." relative-path)
+           ""
+           "Infer practical module boundaries, dependency rules, state ownership rules, and validation expectations from the current code, tests, docs, and filenames."
+           "Do not invent an ideal architecture."
+           "Do not force DDD, Hexagonal Architecture, or Clean Architecture onto the repository."
+           "Prefer simple, practical rules over abstract architecture theory."
+           "Mark uncertain conclusions clearly."
+           "Focus on what helps future AI coding sessions avoid breaking boundaries or introducing messy dependencies."
+           "Do not suggest large refactors unless clearly separated as optional future ideas."
+           "Keep it concise, practical, and small enough to reuse in future AI prompts."
+           ""
+           "Use this structure:"
+           "# Architecture Guardrails"
+           ""
+           "## Purpose"
+           "## Important Modules / Areas"
+           "## Dependency Rules"
+           "## State and Ownership Rules"
+           "## AI Change Rules"
+           "## Required Validation"
+           "## Notes and Uncertainties"
+           ""
+           "If the file already exists, refine it instead of rewriting unrelated guidance.")
+     "\n")))
+
+;;;###autoload
+(defun ai-code-derive-architecture-guardrails ()
+  "Ask the current AI backend to derive repository architecture guardrails."
+  (interactive)
+  (let ((git-root (ai-code--git-root)))
+    (unless git-root
+      (user-error "Not in a git repository"))
+    (ai-code--ensure-architecture-guardrails-file)
+    (when-let ((final-prompt
+                (ai-code-read-string
+                 "Prompt: "
+                 (ai-code--build-architecture-guardrails-prompt git-root))))
+      (ai-code--insert-prompt final-prompt)
+      (message "Requested architecture guardrails for %s" git-root))))
+
 (defun ai-code--get-note-candidates (default-note-file)
   "Get a list of candidate note files.
 DEFAULT-NOTE-FILE is included in the list.  Visible org buffers are prioritized."

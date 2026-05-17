@@ -461,6 +461,7 @@ Shows the current backend label to the right."
   ("P" "AI session checkpoint" ai-code-session-checkpoint)
   ("e" "Debug exception (C-u: clipboard)" ai-code-investigate-exception)
   ("f" "Fix Flycheck errors in scope" ai-code-flycheck-fix-errors-in-scope)
+  ("A" "Derive Architecture Guardrails" ai-code-derive-architecture-guardrails)
   ("k" "Copy Cur File Name (C-u: full)" ai-code-copy-buffer-file-name-to-clipboard)
   ;; ("o" "Open recent file (C-u: insert)" ai-code-git-repo-recent-modified-files)
   ("p" "Open prompt history file" ai-code-open-prompt-file)
