@@ -11,8 +11,6 @@
 (require 'cl-lib)
 (require 'ai-code-session)
 
-(defvar footer-line-format)
-
 (defmacro ai-code-test-session--with-clean-registry (&rest body)
   "Run BODY with a fresh session registry."
   `(let ((ai-code-session--sessions (make-hash-table :test 'equal))
@@ -128,9 +126,12 @@
             (with-current-buffer dashboard-buffer
               (should (derived-mode-p 'ai-code-session-dashboard-mode))
               (should (equal (length tabulated-list-entries) 1))
-              (should (string-match-p
-                       (regexp-quote ai-code-session-dashboard-footer)
-                       (buffer-substring-no-properties (point-min) (point-max))))
+              (should
+               (equal
+                (substring-no-properties
+                 (cadr (buffer-local-value 'mode-line-format
+                                           dashboard-buffer)))
+                ai-code-session-dashboard-shortcuts-hint))
               (let ((entry (cadar tabulated-list-entries)))
                 (should (equal (aref entry 1)
                                (file-name-nondirectory

@@ -190,9 +190,9 @@ describe the session.  ID is optional and mainly useful when restoring state."
 (defconst ai-code-session-dashboard-buffer-name "*AI Code Sessions*"
   "Buffer name used by the AI session dashboard.")
 
-(defconst ai-code-session-dashboard-footer
+(defconst ai-code-session-dashboard-shortcuts-hint
   "Keys: RET visit session   r/g refresh   k kill session   D magit status"
-  "Footer help shown at the bottom of the AI session dashboard.")
+  "Shortcut hint shown in the dashboard mode line.")
 
 (defun ai-code-session-dashboard--insert-footer ()
   "Insert dashboard help below the session list."
@@ -200,7 +200,7 @@ describe the session.  ID is optional and mainly useful when restoring state."
     (goto-char (point-max))
     (unless (bolp)
       (insert "\n"))
-    (insert (propertize ai-code-session-dashboard-footer
+    (insert (propertize ai-code-session-dashboard-shortcuts-hint
                         'face 'mode-line-inactive))
     (insert "\n")))
 
@@ -313,6 +313,10 @@ describe the session.  ID is optional and mainly useful when restoring state."
          ("Status" 12 t)
          ("Dirty files" 11 t)])
   (setq tabulated-list-padding 2)
+  ;; Keep shortcut hints visible at the bottom of the dashboard window.
+  (setq-local mode-line-format
+              (list " " (propertize ai-code-session-dashboard-shortcuts-hint
+                                    'face 'mode-line)))
   (add-hook 'tabulated-list-revert-hook #'ai-code-session-dashboard-refresh nil t)
   (tabulated-list-init-header))
 
