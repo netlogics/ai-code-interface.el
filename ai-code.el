@@ -242,9 +242,11 @@ ARG is the prefix argument."
   (ai-code-cli-send-command ai-code-session-checkpoint-prompt)
   (ai-code-cli-switch-to-buffer))
 
-(defun ai-code--emacs-runtime-debug-prompt (description eval-available-p)
+(defun ai-code--emacs-runtime-debug-prompt (description eval-available-p
+                                                       &optional region-text region-location-info)
   "Return an Emacs runtime debugging prompt from DESCRIPTION.
-EVAL-AVAILABLE-P reports whether `eval_elisp' is globally enabled."
+EVAL-AVAILABLE-P reports whether `eval_elisp' is globally enabled.
+Optional REGION-TEXT and REGION-LOCATION-INFO add selected-region context."
   (format
    (concat
     "Use the Emacs MCP tools available in this session to debug my Emacs runtime.\n"
@@ -254,11 +256,19 @@ EVAL-AVAILABLE-P reports whether `eval_elisp' is globally enabled."
     "variables, recent messages, load state, and the last backtrace when useful.\n"
     "Explain what you find, then recommend the smallest fix or next step.\n\n"
     "Runtime issue description:\n"
+    "%s"
     "%s")
    (if eval-available-p
        "eval_elisp is enabled in your Emacs MCP config."
      "eval_elisp is disabled in your Emacs MCP config, so rely on non-eval inspection tools unless you first enable ai-code-mcp-debug-tools-enable-eval-elisp.")
-   description))
+   description
+   (if region-text
+       (concat
+        "\n\nSelected region:\n"
+        (when region-location-info
+          (concat region-location-info "\n"))
+        region-text)
+     "")))
 
 ;;;###autoload
 (defun ai-code-debug-emacs-runtime ()
@@ -270,6 +280,12 @@ EVAL-AVAILABLE-P reports whether `eval_elisp' is globally enabled."
   (let* ((description
           (ai-code-read-string
            "Describe the Emacs runtime issue (it can be an interactive function or a key binding): "))
+         (region-text (when (use-region-p)
+                        (buffer-substring-no-properties (region-beginning) (region-end))))
+         (region-location-info (when region-text
+                                 (ai-code--get-region-location-info
+                                  (region-beginning)
+                                  (region-end))))
          (eval-available-p
           (bound-and-true-p ai-code-mcp-debug-tools-enable-eval-elisp)))
     (if eval-available-p
@@ -283,7 +299,9 @@ EVAL-AVAILABLE-P reports whether `eval_elisp' is globally enabled."
                     "Confirm and edit Emacs runtime debug prompt: "
                     (ai-code--emacs-runtime-debug-prompt
                      description
-                     eval-available-p))))
+                     eval-available-p
+                     region-text
+                     region-location-info))))
         (ai-code--insert-prompt prompt)))))
 
 ;;;###autoload
