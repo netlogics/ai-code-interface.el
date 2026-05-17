@@ -15,7 +15,7 @@
 
 (declare-function magit-get-current-branch "magit-git" ())
 (declare-function magit-git-lines "magit-git" (&rest args))
-(declare-function magit-status-setup-buffer "magit-status" (directory))
+(declare-function magit-status "magit-status" (directory))
 
 (cl-defstruct ai-code-session
   id
@@ -253,7 +253,8 @@ describe the session.  ID is optional and mainly useful when restoring state."
   (interactive)
   (setq tabulated-list-entries (ai-code-session-dashboard--entries))
   (tabulated-list-print t)
-  (ai-code-session-dashboard--insert-footer))
+  (save-excursion
+    (ai-code-session-dashboard--insert-footer)))
 
 (defun ai-code-session-dashboard-visit ()
   "Visit the session buffer on the current line."
@@ -278,9 +279,9 @@ describe the session.  ID is optional and mainly useful when restoring state."
       (user-error "Session kill canceled"))
     (when (and process (process-live-p process))
       (delete-process process))
+    (ai-code-session-unregister (ai-code-session-id session))
     (when (buffer-live-p buffer)
       (kill-buffer buffer))
-    (ai-code-session-unregister session)
     (ai-code-session-dashboard-refresh)))
 
 (defun ai-code-session-dashboard-open-diff ()
@@ -288,7 +289,7 @@ describe the session.  ID is optional and mainly useful when restoring state."
   (interactive)
   (if-let* ((session (ai-code-session-dashboard--session-at-point))
             (repo-root (ai-code-session-repo-root session)))
-      (magit-status-setup-buffer repo-root)
+      (magit-status repo-root)
     (user-error "No repository is associated with this session")))
 
 (defvar ai-code-session-dashboard-mode-map

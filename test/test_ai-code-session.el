@@ -184,6 +184,42 @@
        (when (buffer-live-p dashboard-buffer)
          (kill-buffer dashboard-buffer))))))
 
+(ert-deftest ai-code-test-session-dashboard-refresh-preserves-selected-entry ()
+  "Refreshing should keep point on the selected dashboard entry."
+  (ai-code-test-session--with-clean-registry
+   (let ((session-buffer (get-buffer-create "*codex[refresh-point]*"))
+         (repo-root (make-temp-file "ai-code-dashboard-refresh-point-" t))
+         dashboard-buffer
+         session-id)
+     (unwind-protect
+         (progn
+           (setq session-id
+                 (ai-code-session-id
+                  (ai-code-session-register
+                   :buffer session-buffer
+                   :backend "codex"
+                   :repo-root repo-root
+                   :metadata '(:status "running" :dirty-count 0))))
+           (cl-letf (((symbol-function 'get-buffer-process)
+                      (lambda (_buffer) 'mock-process))
+                     ((symbol-function 'process-live-p)
+                      (lambda (_process) t))
+                     ((symbol-function 'pop-to-buffer)
+                      (lambda (buffer &rest _args)
+                        (setq dashboard-buffer buffer)
+                        (get-buffer-window buffer))))
+             (ai-code-session-dashboard)
+             (with-current-buffer dashboard-buffer
+               (ai-code-test-session-dashboard-goto-first-entry)
+               (ai-code-session-dashboard-refresh)
+               (should (equal (tabulated-list-get-id) session-id)))))
+       (when (buffer-live-p session-buffer)
+         (kill-buffer session-buffer))
+       (when (file-directory-p repo-root)
+         (delete-directory repo-root t))
+       (when (buffer-live-p dashboard-buffer)
+         (kill-buffer dashboard-buffer))))))
+
 (ert-deftest ai-code-test-session-dashboard-open-diff-uses-magit-status ()
   "D should open `magit-status' for the session repository."
   (ai-code-test-session--with-clean-registry
@@ -206,15 +242,61 @@
                       (lambda (buffer &rest _args)
                         (setq dashboard-buffer buffer)
                         (get-buffer-window buffer)))
-                     ((symbol-function 'magit-status-setup-buffer)
+                     ((symbol-function 'magit-status)
                       (lambda (directory)
-                        (setq opened-repo directory))))
+                        (setq opened-repo directory)))
+                     ((symbol-function 'magit-status-setup-buffer)
+                      (lambda (&rest _args)
+                        (ert-fail "dashboard should use public `magit-status'"))))
              (ai-code-session-dashboard)
              (with-current-buffer dashboard-buffer
                 (ai-code-test-session-dashboard-goto-first-entry)
                 (ai-code-session-dashboard-open-diff))
              (should (equal opened-repo
                             (file-name-as-directory repo-root)))))
+       (when (buffer-live-p session-buffer)
+         (kill-buffer session-buffer))
+       (when (file-directory-p repo-root)
+         (delete-directory repo-root t))
+       (when (buffer-live-p dashboard-buffer)
+         (kill-buffer dashboard-buffer))))))
+
+(ert-deftest ai-code-test-session-dashboard-kill-session-unregisters-live-buffer ()
+  "Killing a session should unregister it even when the buffer stays live."
+  (ai-code-test-session--with-clean-registry
+   (let ((session-buffer (get-buffer-create "*codex[kill-live-buffer]*"))
+         (repo-root (make-temp-file "ai-code-dashboard-kill-live-buffer-" t))
+         dashboard-buffer
+         process)
+     (unwind-protect
+         (progn
+           (setq process (start-process "ai-code-dashboard-kill-live-buffer"
+                                        session-buffer
+                                        "sleep"
+                                        "60"))
+           (set-process-query-on-exit-flag process nil)
+           (ai-code-session-register
+            :buffer session-buffer
+            :backend "codex"
+            :repo-root repo-root
+            :metadata '(:status "running" :dirty-count 0))
+           (cl-letf (((symbol-function 'y-or-n-p)
+                      (lambda (&rest _args) t))
+                     ((symbol-function 'kill-buffer)
+                      (lambda (&rest _args) nil))
+                     ((symbol-function 'pop-to-buffer)
+                      (lambda (buffer &rest _args)
+                        (setq dashboard-buffer buffer)
+                        (get-buffer-window buffer))))
+             (ai-code-session-dashboard)
+             (with-current-buffer dashboard-buffer
+               (ai-code-test-session-dashboard-goto-first-entry)
+               (ai-code-session-dashboard-kill-session))
+             (should (buffer-live-p session-buffer))
+             (should-not (ai-code-session-get session-buffer))
+             (should-not (process-live-p process))))
+       (when (and process (process-live-p process))
+         (delete-process process))
        (when (buffer-live-p session-buffer)
          (kill-buffer session-buffer))
        (when (file-directory-p repo-root)
