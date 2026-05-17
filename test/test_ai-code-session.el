@@ -90,7 +90,7 @@
    (should-not (ai-code-session-get nil))
    (should-not (ai-code-session-get "missing-session-id"))))
 
-(defun ai-code-test-session-dashboard--goto-first-entry ()
+(defun ai-code-test-session-dashboard-goto-first-entry ()
   "Move point to the first dashboard entry."
   (goto-char (point-min))
   (re-search-forward "^S[0-9]+" nil t)
@@ -168,7 +168,7 @@
                         (get-buffer-window buffer))))
              (ai-code-session-dashboard)
              (with-current-buffer dashboard-buffer
-               (ai-code-test-session-dashboard--goto-first-entry)
+               (ai-code-test-session-dashboard-goto-first-entry)
                (ai-code-session-dashboard-visit))
              (should (eq visited-buffer session-buffer))))
        (when (buffer-live-p session-buffer)
@@ -205,8 +205,8 @@
                         (setq opened-repo directory))))
              (ai-code-session-dashboard)
              (with-current-buffer dashboard-buffer
-               (ai-code-test-session-dashboard--goto-first-entry)
-               (ai-code-session-dashboard-open-diff))
+                (ai-code-test-session-dashboard-goto-first-entry)
+                (ai-code-session-dashboard-open-diff))
              (should (equal opened-repo
                             (file-name-as-directory repo-root)))))
        (when (buffer-live-p session-buffer)
@@ -241,8 +241,8 @@
                         (get-buffer-window buffer))))
              (ai-code-session-dashboard)
              (with-current-buffer dashboard-buffer
-               (ai-code-test-session-dashboard--goto-first-entry)
-               (ai-code-session-dashboard-kill-session))
+                (ai-code-test-session-dashboard-goto-first-entry)
+                (ai-code-session-dashboard-kill-session))
              (should-not (ai-code-session-list))
              (should-not (buffer-live-p session-buffer))
              (should-not (process-live-p process))))
