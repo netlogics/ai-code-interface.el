@@ -56,7 +56,7 @@ a Git repository or when `magit-toplevel' signals an error."
 (defvar ai-code-task-use-gptel-filename)
 
 (defconst ai-code-ddd-context-output-relative-path
-  ".ai.code.files/domain/domain-context.md"
+  ".ai.code.files/domain/domain-context.org"
   "Repository-relative path for the derived DDD context document.")
 
 (defun ai-code--resolve-auto-test-suffix-for-current-send ()
@@ -661,7 +661,7 @@ not already exist, so the backend has a concrete document to create or update."
                        (user-error "Not inside a Git repository")))
          (files-dir (ai-code--ensure-files-directory))
          (domain-dir (expand-file-name "domain" files-dir))
-         (target-file (expand-file-name "domain-context.md" domain-dir)))
+         (target-file (expand-file-name "domain-context.org" domain-dir)))
     (make-directory domain-dir t)
     (unless (file-exists-p target-file)
       (write-region "" nil target-file nil 'silent))

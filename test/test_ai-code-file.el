@@ -631,12 +631,12 @@ everything is cleaned up afterward."
                 "Domain-Driven Design (DDD) style context document"
                 captured-initial-prompt))
        (should (string-match-p
-                "\\.ai\\.code\\.files/domain/domain-context\\.md"
+                "\\.ai\\.code\\.files/domain/domain-context\\.org"
                 captured-initial-prompt))
        (should (string-match-p "## Notes and Uncertainties" captured-initial-prompt))
        (should (equal inserted-prompt captured-initial-prompt))
        (should (file-exists-p
-                (expand-file-name ".ai.code.files/domain/domain-context.md"
+                (expand-file-name ".ai.code.files/domain/domain-context.org"
                                   default-directory)))))))
 
 (ert-deftest ai-code-test-derive-ddd-context-includes-stored-repo-context ()
