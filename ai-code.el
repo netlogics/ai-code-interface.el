@@ -393,8 +393,7 @@ Shows the current backend label to the right."
   ("S" "(Un)Install skills for backend" ai-code-install-backend-skills)
   ("g" "Open backend config (eg. add mcp)" ai-code-open-backend-config)
   ("G" "Open backend repo agent file" ai-code-open-backend-agent-file)
-  ("l" ai-code-select-terminal :description ai-code--select-terminal-description)
-  ("|" "Apply prompt on file" ai-code-apply-prompt-on-current-file))
+  ("l" ai-code-select-terminal :description ai-code--select-terminal-description))
 
 (transient-define-group ai-code--menu-actions-with-context
   (ai-code--infix-toggle-suffix)
@@ -430,6 +429,7 @@ Shows the current backend label to the right."
   ("m" "Debug python MCP server" ai-code-debug-mcp)
   ;; ("N" "Toggle notifications" ai-code-notifications-toggle)
   ("d" "Debug Emacs runtime" ai-code-debug-emacs-runtime)
+  ("|" "Apply prompt on file" ai-code-apply-prompt-on-current-file)
   ("h" "Help / Quick Start" ai-code-onboarding-open-quickstart))
 
 (transient-define-prefix ai-code-menu-default ()

@@ -124,14 +124,13 @@
                       (lambda (buffer &rest _args)
                         (setq dashboard-buffer buffer)
                         (get-buffer-window buffer))))
-             (ai-code-session-dashboard))
+            (ai-code-session-dashboard))
             (with-current-buffer dashboard-buffer
               (should (derived-mode-p 'ai-code-session-dashboard-mode))
               (should (equal (length tabulated-list-entries) 1))
-              (should (equal (substring-no-properties
-                              (buffer-local-value 'footer-line-format
-                                                  dashboard-buffer))
-                             ai-code-session-dashboard-footer))
+              (should (string-match-p
+                       (regexp-quote ai-code-session-dashboard-footer)
+                       (buffer-substring-no-properties (point-min) (point-max))))
               (let ((entry (cadar tabulated-list-entries)))
                 (should (equal (aref entry 1)
                                (file-name-nondirectory
