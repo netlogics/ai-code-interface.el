@@ -633,7 +633,8 @@ everything is cleaned up afterward."
         (should (string-match-p
                 "\\.ai\\.code\\.files/architecture/domain-context\\.org"
                 captured-initial-prompt))
-       (should (string-match-p "## Notes and Uncertainties" captured-initial-prompt))
+        (should (string-match-p "\\*\\* Notes and Uncertainties"
+                                captured-initial-prompt))
        (should (equal inserted-prompt captured-initial-prompt))
         (should (file-exists-p
                 (expand-file-name ".ai.code.files/architecture/domain-context.org"
