@@ -490,11 +490,11 @@ The result is a cons of whether SYMBOL is bound and its default value."
                            (,process (,window) 18 80)))))
           (should (equal (nreverse rendered)
                          `((,process "old-redraw-1" nil)
-                           (,process "old-redraw-2" nil))))
+                           (,process "old-redraw-2" nil)))))
       (when (process-live-p process)
         (delete-process process))
       (when (buffer-live-p buffer)
-        (kill-buffer buffer)))))
+        (kill-buffer buffer))))
 
 (ert-deftest test-ai-code-backends-infra-sync-terminal-dimensions-vterm-width-change ()
   "Vterm width changes should go through the native resize handler."
@@ -1376,6 +1376,39 @@ The result is a cons of whether SYMBOL is bound and its default value."
       (when (buffer-live-p buffer)
         (kill-buffer buffer)))))
 
+(ert-deftest test-ai-code-backends-infra-reuse-session-window-syncs-session-registry ()
+  "Reusing a hidden session should refresh the shared session registry."
+  (let* ((working-dir "/tmp/ai-code-reuse-hidden/")
+         (prefix "codex")
+         (task-file "/tmp/ai-code-reuse-hidden/.ai.code.files/task.org")
+         (buffer (get-buffer-create "*codex[reuse-hidden-sync]*"))
+         (sync-call nil))
+    (unwind-protect
+        (cl-letf (((symbol-function 'get-buffer-window)
+                   (lambda (&rest _args) nil))
+                  ((symbol-function 'ai-code-backends-infra--set-session-directory)
+                   (lambda (&rest _args) nil))
+                  ((symbol-function 'ai-code-backends-infra--configure-session-buffer)
+                   (lambda (&rest _args) nil))
+                  ((symbol-function 'ai-code-backends-infra--remember-session-buffer)
+                   (lambda (&rest _args) nil))
+                  ((symbol-function 'ai-code-backends-infra--sync-session-registry)
+                   (lambda (target-buffer directory target-prefix &optional target-task-file)
+                     (setq sync-call
+                           (list target-buffer directory target-prefix target-task-file))))
+                  ((symbol-function 'ai-code-backends-infra--display-buffer-in-side-window)
+                   (lambda (&rest _args) nil)))
+          (ai-code-backends-infra--reuse-session-window
+           buffer
+           working-dir
+           prefix
+           "\\\r\n"
+           task-file)
+          (should (equal sync-call
+                         (list buffer working-dir prefix task-file))))
+      (when (buffer-live-p buffer)
+        (kill-buffer buffer)))))
+
 (ert-deftest test-ai-code-backends-infra-resolve-session-target-prefers-explicit-instance ()
   "Explicit INSTANCE-NAME should bypass prompting and produce stable target info."
   (let* ((working-dir "/tmp/ai-code-session-target/")
@@ -1475,6 +1508,23 @@ The result is a cons of whether SYMBOL is bound and its default value."
     (ai-code-backends-infra--cleanup-session dir buf-name table nil nil "finished\n")
     (should-not (get-buffer buf-name))
     (ignore buf)))
+
+(ert-deftest test-ai-code-backends-infra-cleanup-session-unregisters-buffer ()
+  "Normal cleanup should unregister the session buffer from the shared registry."
+  (let* ((table (make-hash-table :test 'equal))
+         (dir "/tmp/test-cleanup/")
+         (buf-name "*test-cleanup-unregister*")
+         (buf (get-buffer-create buf-name))
+         (unregistered nil))
+    (unwind-protect
+        (cl-letf (((symbol-function 'ai-code-session-unregister)
+                   (lambda (target)
+                     (setq unregistered target))))
+          (puthash (cons dir "default") t table)
+          (ai-code-backends-infra--cleanup-session dir buf-name table nil nil "finished\n")
+          (should (eq unregistered buf)))
+      (when (buffer-live-p buf)
+        (kill-buffer buf)))))
 
 (ert-deftest test-ai-code-backends-infra-cleanup-session-preserves-buffer-on-abnormal-exit ()
   "Buffer is preserved when the process exits abnormally."
@@ -2452,6 +2502,84 @@ The result is a cons of whether SYMBOL is bound and its default value."
                                (list :display buffer)))))
       (when (buffer-live-p buffer)
         (kill-buffer buffer)))))
+
+(ert-deftest test-ai-code-backends-infra-finalize-started-session-syncs-session-registry ()
+  "Successful startup finalization should register the session in shared state."
+  (let* ((working-dir "/tmp/ai-code-finalize-start/")
+         (prefix "codex")
+         (buffer-name "*codex[finalize-start-sync]*")
+         (task-file "/tmp/ai-code-finalize-start/.ai.code.files/task.org")
+         (buffer (get-buffer-create buffer-name))
+         (process 'mock-process)
+         (sync-call nil))
+    (unwind-protect
+        (cl-letf (((symbol-function 'set-process-sentinel)
+                   (lambda (&rest _args) nil))
+                  ((symbol-function 'ai-code-backends-infra--configure-session-buffer)
+                   (lambda (&rest _args) nil))
+                  ((symbol-function 'ai-code-backends-infra--remember-session-buffer)
+                   (lambda (&rest _args) nil))
+                  ((symbol-function 'ai-code-backends-infra--sync-session-registry)
+                   (lambda (target-buffer directory target-prefix &optional target-task-file)
+                     (setq sync-call
+                           (list target-buffer directory target-prefix target-task-file))))
+                  ((symbol-function 'ai-code-backends-infra--display-buffer-in-side-window)
+                   (lambda (&rest _args) nil)))
+          (ai-code-backends-infra--finalize-started-session
+           buffer
+           process
+           working-dir
+           buffer-name
+           (make-hash-table :test 'equal)
+           "default"
+           prefix
+           nil
+           nil
+           nil
+           nil
+           task-file)
+          (should (equal sync-call
+                         (list buffer working-dir prefix task-file))))
+      (when (buffer-live-p buffer)
+        (kill-buffer buffer)))))
+
+(ert-deftest test-ai-code-backends-infra-finalize-started-session-kill-buffer-hook-unregisters ()
+  "Successful startup finalization should unregister sessions when buffers die."
+  (let* ((working-dir "/tmp/ai-code-finalize-kill-hook/")
+         (prefix "codex")
+         (buffer-name "*codex[finalize-kill-hook]*")
+         (buffer (get-buffer-create buffer-name))
+         (process 'mock-process)
+         (unregistered nil))
+    (cl-letf (((symbol-function 'set-process-sentinel)
+               (lambda (&rest _args) nil))
+              ((symbol-function 'ai-code-backends-infra--configure-session-buffer)
+               (lambda (&rest _args) nil))
+              ((symbol-function 'ai-code-backends-infra--remember-session-buffer)
+               (lambda (&rest _args) nil))
+              ((symbol-function 'ai-code-backends-infra--sync-session-registry)
+               (lambda (&rest _args) nil))
+              ((symbol-function 'ai-code-backends-infra--display-buffer-in-side-window)
+               (lambda (&rest _args) nil))
+              ((symbol-function 'ai-code-session-unregister)
+               (lambda (target)
+                 (setq unregistered target))))
+      (ai-code-backends-infra--finalize-started-session
+       buffer
+       process
+       working-dir
+       buffer-name
+       (make-hash-table :test 'equal)
+       "default"
+       prefix
+       nil
+       nil
+       nil
+       nil)
+      (kill-buffer buffer)
+      (should (eq unregistered buffer)))
+    (when (buffer-live-p buffer)
+      (kill-buffer buffer))))
 
 (ert-deftest test-ai-code-backends-infra-finalize-started-session-chains-ghostel-sentinel ()
   "Successful startup finalization should run Ghostel's native sentinel first."

@@ -162,6 +162,51 @@
                  "debugging run"
                  (cadr confirm-read-args)))))
 
+(ert-deftest ai-code-test-debug-emacs-runtime-includes-selected-region-context ()
+  "Debug Emacs runtime should include the active region in the prompt."
+  (let ((ai-code-mcp-debug-tools-enabled t)
+        (ai-code-mcp-debug-tools-enable-eval-elisp t)
+        confirm-read-args
+        sent-prompt)
+    (cl-letf (((symbol-function 'message)
+               (lambda (&rest _args) nil))
+              ((symbol-function 'use-region-p)
+               (lambda () t))
+              ((symbol-function 'region-beginning)
+               (lambda () 10))
+              ((symbol-function 'region-end)
+               (lambda () 42))
+              ((symbol-function 'buffer-substring-no-properties)
+               (lambda (beg end)
+                 (should (= beg 10))
+                 (should (= end 42))
+                 "(global-set-key (kbd \"C-c x\") #'wrong-command)"))
+              ((symbol-function 'ai-code--get-region-location-info)
+               (lambda (beg end)
+                 (should (= beg 10))
+                 (should (= end 42))
+                 "ai-code.el#L10-L11"))
+              ((symbol-function 'ai-code-read-string)
+               (lambda (prompt &optional initial-input _candidate-list)
+                 (cond
+                  ((string-match-p "Describe the Emacs runtime issue" prompt)
+                   "C-c x runs the wrong interactive command")
+                  ((string-match-p "Confirm and edit Emacs runtime debug prompt" prompt)
+                   (setq confirm-read-args (list prompt initial-input))
+                   initial-input)
+                  (t
+                   (ert-fail (format "Unexpected prompt: %s" prompt))))))
+              ((symbol-function 'ai-code--insert-prompt)
+               (lambda (prompt)
+                 (setq sent-prompt prompt))))
+      (ai-code-debug-emacs-runtime))
+    (should (string-match-p "Selected region:" (cadr confirm-read-args)))
+    (should (string-match-p "ai-code.el#L10-L11" (cadr confirm-read-args)))
+    (should (string-match-p
+             (regexp-quote "(global-set-key (kbd \"C-c x\") #'wrong-command)")
+             (cadr confirm-read-args)))
+    (should (equal sent-prompt (cadr confirm-read-args)))))
+
 (ert-deftest ai-code-test-debug-emacs-runtime-removes-stale-done-comment ()
   "The source should not keep the stale DONE note for the runtime debug menu item."
   (with-temp-buffer
@@ -184,6 +229,15 @@
                 'ai-code-derive-ddd-context))
     (should (equal (plist-get (cdr suffix) :description)
                    "Derive DDD Context for Repo"))))
+
+(ert-deftest ai-code-test-menu-ai-cli-session-includes-session-dashboard-entry ()
+  "Test that the AI CLI session menu exposes the session dashboard."
+  (let ((suffix (transient-get-suffix 'ai-code--menu-ai-cli-session "j")))
+    (should suffix)
+    (should (eq (plist-get (cdr suffix) :command)
+                'ai-code-session-dashboard))
+    (should (equal (plist-get (cdr suffix) :description)
+                   "Session dashboard"))))
 
 (ert-deftest ai-code-test-menu-other-tools-includes-debug-emacs-runtime-entry ()
   "Test that the Other Tools menu exposes Emacs runtime debugging."
