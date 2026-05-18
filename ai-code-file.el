@@ -641,15 +641,15 @@ Includes stored context entries for the current Git repository if available."
    (format "Create or update the Org file at %s.\n\n"
             ai-code-ddd-context-output-relative-path)
    "Use this structure:\n"
-   "# Domain Context\n\n"
-   "## Purpose\n"
-   "## Ubiquitous Language\n"
-   "## Main Domain Concepts\n"
-   "## Bounded Context Candidates\n"
-   "## Core Flows\n"
-   "## Domain Invariants / Business Rules\n"
-   "## Testing Ideas\n"
-   "## Notes and Uncertainties"))
+   "* Domain Context\n\n"
+   "** Purpose\n"
+   "** Ubiquitous Language\n"
+   "** Main Domain Concepts\n"
+   "** Bounded Context Candidates\n"
+   "** Core Flows\n"
+   "** Domain Invariants / Business Rules\n"
+   "** Testing Ideas\n"
+   "** Notes and Uncertainties"))
 
 ;;;###autoload
 (defun ai-code-derive-ddd-context ()
