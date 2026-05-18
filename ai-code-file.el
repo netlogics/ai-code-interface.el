@@ -744,7 +744,7 @@ Includes stored context entries for the current Git repository if available."
       (user-error "Not in a git repository"))
     (ai-code--ensure-architecture-guardrails-file)
     (if-let ((final-prompt
-              (ai-code-read-string
+              (ai-code-plain-read-string
                "Prompt: "
                (ai-code--build-architecture-guardrails-prompt git-root))))
         (progn
@@ -769,8 +769,8 @@ not already exist, so the backend has a concrete document to create or update."
     (let* ((initial-prompt
             (concat (ai-code--derive-ddd-context-prompt git-root)
                     (or (ai-code--format-repo-context-info) "")))
-           (final-prompt (ai-code-read-string "Derive DDD context prompt: "
-                                              initial-prompt)))
+           (final-prompt (ai-code-plain-read-string "Derive DDD context prompt: "
+                                                    initial-prompt)))
       (when final-prompt
         (ai-code--insert-prompt final-prompt)))))
 
