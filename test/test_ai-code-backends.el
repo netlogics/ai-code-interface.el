@@ -151,7 +151,8 @@
     (should (eq (plist-get (cdr spec) :switch) 'ai-code-antigravity-cli-switch-to-buffer))
     (should (eq (plist-get (cdr spec) :send) 'ai-code-antigravity-cli-send-command))
     (should (eq (plist-get (cdr spec) :resume) 'ai-code-antigravity-cli-resume))
-    (should-not (plist-get (cdr spec) :config))
+    (should (equal (plist-get (cdr spec) :config) "~/.gemini/antigravity-cli/settings.json"))
+    (should (equal (plist-get (cdr spec) :agent-file) "AGENTS.md"))
     (should (equal (plist-get (cdr spec) :cli) "agy"))))
 
 (ert-deftest ai-code-test-backend-selection-keeps-repo-session-backend ()

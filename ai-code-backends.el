@@ -229,8 +229,8 @@ so the CLI itself handles the installation details."
      :switch  ai-code-antigravity-cli-switch-to-buffer
      :send    ai-code-antigravity-cli-send-command
      :resume  ai-code-antigravity-cli-resume
-     :config  nil
-     :agent-file nil
+     :config  "~/.gemini/antigravity-cli/settings.json"
+     :agent-file "AGENTS.md"
      :upgrade "curl -fsSL https://antigravity.google/cli/install.sh | bash"
      :install-skills nil
      :cli     "agy")
