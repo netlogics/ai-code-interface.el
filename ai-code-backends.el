@@ -231,7 +231,7 @@ so the CLI itself handles the installation details."
      :resume  ai-code-antigravity-cli-resume
      :config  nil
      :agent-file nil
-     :upgrade nil
+     :upgrade "curl -fsSL https://antigravity.google/cli/install.sh | bash"
      :install-skills nil
      :cli     "agy")
     (github-copilot-cli
