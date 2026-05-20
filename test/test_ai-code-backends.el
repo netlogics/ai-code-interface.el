@@ -142,6 +142,19 @@
     (should (eq (plist-get (cdr spec) :install-skills) 'ai-code-eca-install-skills))
     (should (null (plist-get (cdr spec) :cli)))))
 
+(ert-deftest ai-code-test-antigravity-backend-spec-contract ()
+  "Ensure the Antigravity backend entry exposes required integration keys."
+  (let ((spec (ai-code--backend-spec 'antigravity)))
+    (should spec)
+    (should (eq (plist-get (cdr spec) :require) 'ai-code-antigravity-cli))
+    (should (eq (plist-get (cdr spec) :start) 'ai-code-antigravity-cli))
+    (should (eq (plist-get (cdr spec) :switch) 'ai-code-antigravity-cli-switch-to-buffer))
+    (should (eq (plist-get (cdr spec) :send) 'ai-code-antigravity-cli-send-command))
+    (should (eq (plist-get (cdr spec) :resume) 'ai-code-antigravity-cli-resume))
+    (should (equal (plist-get (cdr spec) :config)
+                   "~/.gemini/antigravity-cli/settings.json"))
+    (should (equal (plist-get (cdr spec) :cli) "agy"))))
+
 (ert-deftest ai-code-test-backend-selection-keeps-repo-session-backend ()
   "Switching backend in one repo should not overwrite started backend in another repo."
   (let* ((ai-code-backends

@@ -222,6 +222,18 @@ so the CLI itself handles the installation details."
      :upgrade "npm install -g @google/gemini-cli"
      :install-skills nil
      :cli     "gemini")
+    (antigravity
+     :label "Antigravity CLI"
+     :require ai-code-antigravity-cli
+     :start   ai-code-antigravity-cli
+     :switch  ai-code-antigravity-cli-switch-to-buffer
+     :send    ai-code-antigravity-cli-send-command
+     :resume  ai-code-antigravity-cli-resume
+     :config  "~/.gemini/antigravity-cli/settings.json"
+     :agent-file nil
+     :upgrade "curl -fsSL https://antigravity.google/cli/install.sh | bash"
+     :install-skills nil
+     :cli     "agy")
     (github-copilot-cli
      :label "GitHub Copilot CLI"
      :require ai-code-github-copilot-cli

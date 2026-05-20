@@ -407,6 +407,7 @@ When working with multiple AI sessions, it can be useful to receive desktop noti
      - Sets =TERM_PROGRAM=vscode= by default and binds =Shift+Enter=/=Ctrl+Enter=
        inside Copilot sessions to emulate Copilot CLI's VS Code multiline setup.
    - [[https://github.com/google-gemini/gemini-cli][Gemini CLI]] (`[[./ai-code-gemini-cli.el][ai-code-gemini-cli.el]]`)
+   - [[https://antigravity.google/product/antigravity-cli][Antigravity CLI]] (`[[./ai-code-antigravity-cli.el][ai-code-antigravity-cli.el]]`)
    - [[https://github.com/anthropics/claude-code][Claude Code]] (`[[./ai-code-claude-code.el][ai-code-claude-code.el]]`)
      - Binds =Shift+Enter=/=Ctrl+Enter= inside Claude sessions to send Claude's
        multiline input sequence.
@@ -453,6 +454,16 @@ When working with multiple AI sessions, it can be useful to receive desktop noti
      point at a different binary or pass additional flags. After that, select the backend through
      `ai-code-select-backend` or bind a helper in your config.
      To resume previous conversations, use =-c= flag (automatically handled by the resume command).
+
+**** Antigravity CLI setup
+     Install Antigravity CLI on macOS / Linux with:
+     =curl -fsSL https://antigravity.google/cli/install.sh | bash=
+     Ensure the `agy` executable is on your PATH.
+     Customize `ai-code-antigravity-cli-program` or `ai-code-antigravity-cli-program-switches` if you want to
+     point at a different binary or pass additional flags. After that, select the backend through
+     `ai-code-select-backend` or bind a helper in your config.
+     The backend uses =~/.gemini/antigravity-cli/settings.json= as the default config location and the
+     resume command adds =--resume= automatically.
 
    You can add other backends by customizing the `ai-code-backends` variable.
 
