@@ -458,12 +458,12 @@ When working with multiple AI sessions, it can be useful to receive desktop noti
 **** Antigravity CLI setup
      Install Antigravity CLI on macOS / Linux with:
      =curl -fsSL https://antigravity.google/cli/install.sh | bash=
+     Review the script before piping it to your shell.
      Ensure the `agy` executable is on your PATH.
      Customize `ai-code-antigravity-cli-program` or `ai-code-antigravity-cli-program-switches` if you want to
      point at a different binary or pass additional flags. After that, select the backend through
      `ai-code-select-backend` or bind a helper in your config.
-     The backend uses =~/.gemini/antigravity-cli/settings.json= as the default config location and the
-     resume command adds =--resume= automatically.
+     The resume command adds =--resume= automatically.
 
    You can add other backends by customizing the `ai-code-backends` variable.
 
