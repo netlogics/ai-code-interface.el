@@ -95,7 +95,7 @@ When FORCE-PROMPT is non-nil, prompt to select a session."
 Argument ARG is passed to the start command."
   (interactive "P")
   (let ((ai-code-antigravity-cli-program-switches
-         (append ai-code-antigravity-cli-program-switches '("--resume"))))
+         (append ai-code-antigravity-cli-program-switches '("--continue"))))
     (ai-code-antigravity-cli arg)))
 
 (provide 'ai-code-antigravity-cli)
