@@ -219,6 +219,8 @@ AI Code includes an Emacs MCP server with these built-in tools:
 
 Additional debugging tools come from =ai-code-mcp-debug-tools.el= and are enabled by default:
 
+*This make emacs runtime debugging possible. With emacs debugging mcp enabled, you can simply ask AI to trouble shooting your emacs lisp related problem (could deep inside some installed package), AI can automatically figure out the problem and suggest how to fix / perform the fix*
+
 #+begin_src emacs-lisp
 (setq ai-code-mcp-debug-tools-enabled t)  ;; default
 ;; (setq ai-code-mcp-debug-tools-enabled nil) ;; disable them
