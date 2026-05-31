@@ -1,0 +1,1 @@
+ Run test after this stage and output the summary of test result. State whether the result matches the goal of this stage. List the files changed and exact test command / result. List the public API / log key / config key change if there is.

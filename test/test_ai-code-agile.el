@@ -8,10 +8,50 @@
 
 ;;; Code:
 
+(require 'cl-lib)
 (require 'ert)
 (require 'ai-code-agile)
 
 ;;; Tests for ai-code--tdd-source-function-context-p
+
+(ert-deftest ai-code-test-read-bundled-prompt-file-loads-existing-markdown ()
+  "Verify bundled prompt text is loaded from the package `prompt/` directory."
+  (let* ((temp-root (make-temp-file "ai-code-prompt-bundle-" t))
+         (library-file (expand-file-name "ai-code.el" temp-root))
+         (prompt-dir (expand-file-name "prompt/" temp-root))
+         (prompt-file (expand-file-name "tdd-red-green-base-instruction.md" prompt-dir)))
+    (unwind-protect
+        (progn
+          (make-directory prompt-dir t)
+          (with-temp-file prompt-file
+            (insert "Prompt from markdown\n"))
+          (cl-letf (((symbol-function 'locate-library)
+                     (lambda (library &optional _nosuffix _path _interactive-call)
+                       (when (equal library "ai-code")
+                         library-file))))
+            (should (equal "Prompt from markdown"
+                           (ai-code--read-bundled-prompt-file
+                            "tdd-red-green-base-instruction.md")))))
+      (delete-directory temp-root t))))
+
+(ert-deftest ai-code-test-read-bundled-prompt-file-generates-missing-markdown ()
+  "Verify missing bundled prompt markdown is recreated on demand."
+  (let* ((temp-root (make-temp-file "ai-code-prompt-bundle-" t))
+         (library-file (expand-file-name "ai-code.el" temp-root))
+         (prompt-file (expand-file-name "prompt/tdd-test-pattern-instruction.md" temp-root)))
+    (unwind-protect
+        (cl-letf (((symbol-function 'locate-library)
+                   (lambda (library &optional _nosuffix _path _interactive-call)
+                     (when (equal library "ai-code")
+                       library-file))))
+          (let ((content (ai-code--read-bundled-prompt-file
+                          "tdd-test-pattern-instruction.md")))
+            (should (file-exists-p prompt-file))
+            (should (string-match-p "Follow the test-code pattern" content))
+            (with-temp-buffer
+              (insert-file-contents prompt-file)
+              (should (equal content (string-trim-right (buffer-string)))))))
+      (delete-directory temp-root t))))
 
 (ert-deftest ai-code-test-tdd-source-function-context-p-source-file ()
   "Return non-nil for a non-test source file in `prog-mode' with a function name."

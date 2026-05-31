@@ -24,6 +24,79 @@
 (declare-function dired-get-marked-files "dired"
                   (&optional localp arg filter distinguish-one-marked error-if-none-p))
 
+;;;; Bundled prompt helpers
+
+(defconst ai-code--bundled-prompt-defaults
+  '(("tdd-test-pattern-instruction.md"
+     . "\nFollow the test-code pattern in the current project. Write the test-code in the test-file. If the test-file does not exist, create it using the same test-filename pattern used in this repository.")
+    ("tdd-run-test-after-this-stage-instruction.md"
+     . " Run test after this stage and output the summary of test result. State whether the result matches the goal of this stage. List the files changed and exact test command / result. List the public API / log key / config key change if there is.")
+    ("tdd-run-test-after-each-stage-instruction.md"
+     . " Run test after each stage and output the summary of test result. For each stage, list the stage name, files changed, exact test command / result, and whether the result matches the goal of that stage. List the public API / log key / config key change if there is.")
+    ("tdd-red-green-base-instruction.md"
+     . " Follow strict TDD stages. Do not skip stages. Stage 1 - Red: update only test code and write the smallest failing test that captures the requested behavior. Do not modify source code during Red. Stage 2 - Green: after confirming the new test fails for the expected reason, update the minimum source code needed to make it pass. Do not refactor during Green.")
+    ("tdd-red-green-tail-instruction.md"
+     . " Keep the changes narrowly scoped to the requested behavior. Only update the relevant test and source code. Do not add extra features or unrelated cleanup.")
+    ("tdd-with-refactoring-extension-instruction.md"
+     . " Stage 3 - Blue: after Green is passing, refactor only the files changed in Red/Green. Preserve behavior and do not add features. First review the code diff (including tests) and identify the highest-impact cleanup. Then apply focused refactoring that improves readability, keeps classes/functions small and cohesive / easy to test, reduces duplication, and simplifies naming and control flow."))
+  "Fallback bundled prompt content keyed by markdown file name.")
+
+(defun ai-code--bundled-prompt-root ()
+  "Return the directory that stores bundled ai-code assets."
+  (file-name-directory
+   (file-truename
+    (or (locate-library "ai-code")
+        load-file-name
+        buffer-file-name
+        (expand-file-name "ai-code.el" default-directory)))))
+
+(defun ai-code--bundled-prompt-directory ()
+  "Return the directory that stores bundled prompt markdown files."
+  (expand-file-name "prompt/" (ai-code--bundled-prompt-root)))
+
+(defun ai-code--ensure-bundled-prompt-file (file-name)
+  "Ensure bundled prompt FILE-NAME exists and return its path."
+  (let* ((directory (ai-code--bundled-prompt-directory))
+         (file-path (expand-file-name file-name directory)))
+    (unless (file-exists-p file-path)
+      (make-directory directory t)
+      (when-let ((content (alist-get file-name ai-code--bundled-prompt-defaults nil nil #'string=)))
+        (with-temp-file file-path
+          (insert content)
+          (unless (bolp)
+           (insert "\n")))))
+    file-path))
+
+(defun ai-code--read-bundled-prompt-file (file-name)
+  "Return bundled prompt FILE-NAME content, creating a fallback copy if needed."
+  (with-temp-buffer
+    (insert-file-contents (ai-code--ensure-bundled-prompt-file file-name))
+    (string-trim-right (buffer-string))))
+
+(defun ai-code--tdd-test-pattern-instruction-text ()
+  "Return the bundled test-pattern TDD instruction."
+  (ai-code--read-bundled-prompt-file "tdd-test-pattern-instruction.md"))
+
+(defun ai-code--tdd-run-test-after-this-stage-instruction-text ()
+  "Return the bundled single-stage test-run instruction."
+  (ai-code--read-bundled-prompt-file "tdd-run-test-after-this-stage-instruction.md"))
+
+(defun ai-code--tdd-run-test-after-each-stage-instruction-text ()
+  "Return the bundled per-stage test-run instruction."
+  (ai-code--read-bundled-prompt-file "tdd-run-test-after-each-stage-instruction.md"))
+
+(defun ai-code--tdd-red-green-base-instruction-text ()
+  "Return the bundled Red+Green base instruction."
+  (ai-code--read-bundled-prompt-file "tdd-red-green-base-instruction.md"))
+
+(defun ai-code--tdd-red-green-tail-instruction-text ()
+  "Return the bundled Red+Green tail instruction."
+  (ai-code--read-bundled-prompt-file "tdd-red-green-tail-instruction.md"))
+
+(defun ai-code--tdd-with-refactoring-extension-instruction-text ()
+  "Return the bundled Red+Green+Blue extension instruction."
+  (ai-code--read-bundled-prompt-file "tdd-with-refactoring-extension-instruction.md"))
+
 (defconst ai-code--refactoring-techniques-catalog
   '((:name "Suggest Refactoring Strategy"
            :scopes (region global)
@@ -709,30 +782,6 @@ If no such buffer is found, report a user-error."
     (unless has-test-buffer
       (user-error "No test file found in current windows.  Please open a test file first"))))
 
-(defconst ai-code--tdd-test-pattern-instruction
-  "\nFollow the test-code pattern in the current project. Write the test-code in the test-file. If the test-file does not exist, create it using the same test-filename pattern used in this repository."
-  "Instruction appended to TDD prompts to enforce the project's test pattern.")
-
-(defconst ai-code--tdd-run-test-after-this-stage-instruction
-  " Run test after this stage and output the summary of test result. State whether the result matches the goal of this stage. List the files changed and exact test command / result. List the public API / log key / config key change if there is."
-  "Instruction appended to single-stage TDD prompts.")
-
-(defconst ai-code--tdd-run-test-after-each-stage-instruction
-  " Run test after each stage and output the summary of test result. For each stage, list the stage name, files changed, exact test command / result, and whether the result matches the goal of that stage. List the public API / log key / config key change if there is."
-  "Instruction appended to multi-stage TDD prompts.")
-
-(defconst ai-code--tdd-red-green-base-instruction
-  " Follow strict TDD stages. Do not skip stages. Stage 1 - Red: update only test code and write the smallest failing test that captures the requested behavior. Do not modify source code during Red. Stage 2 - Green: after confirming the new test fails for the expected reason, update the minimum source code needed to make it pass. Do not refactor during Green."
-  "Base instruction shared by Red+Green style TDD prompts.")
-
-(defconst ai-code--tdd-red-green-tail-instruction
-  " Keep the changes narrowly scoped to the requested behavior. Only update the relevant test and source code. Do not add extra features or unrelated cleanup."
-  "Trailing instruction shared by Red+Green style TDD prompts.")
-
-(defconst ai-code--tdd-with-refactoring-extension-instruction
-  " Stage 3 - Blue: after Green is passing, refactor only the files changed in Red/Green. Preserve behavior and do not add features. First review the code diff (including tests) and identify the highest-impact cleanup. Then apply focused refactoring that improves readability, keeps classes/functions small and cohesive / easy to test, reduces duplication, and simplifies naming and control flow."
-  "Refactoring extension shared by Red+Green+Blue style TDD prompts.")
-
 (defconst ai-code--tdd-red-boundaries
   (concat
    "Follow TDD principles - write only the test now, not the implementation. "
@@ -752,18 +801,18 @@ If no such buffer is found, report a user-error."
    "test output. Keep the change narrowly scoped and avoid unrelated cleanup.")
   "Boundaries for TDD failure-fix structured code-change briefs.")
 
-(defconst ai-code--tdd-red-green-boundaries
+(defun ai-code--tdd-red-green-boundaries ()
+  "Return boundaries for Red+Green structured code-change briefs."
   (string-trim
-   (concat ai-code--tdd-red-green-base-instruction
-           ai-code--tdd-red-green-tail-instruction))
-  "Boundaries for Red+Green structured code-change briefs.")
+   (concat (ai-code--tdd-red-green-base-instruction-text)
+           (ai-code--tdd-red-green-tail-instruction-text))))
 
-(defconst ai-code--tdd-red-green-blue-boundaries
+(defun ai-code--tdd-red-green-blue-boundaries ()
+  "Return boundaries for Red+Green+Blue structured code-change briefs."
   (string-trim
-   (concat ai-code--tdd-red-green-base-instruction
-           ai-code--tdd-with-refactoring-extension-instruction
-           ai-code--tdd-red-green-tail-instruction))
-  "Boundaries for Red+Green+Blue structured code-change briefs.")
+   (concat (ai-code--tdd-red-green-base-instruction-text)
+           (ai-code--tdd-with-refactoring-extension-instruction-text)
+           (ai-code--tdd-red-green-tail-instruction-text))))
 
 (defun ai-code--tdd-compose-code-change-brief (goal function-name boundaries instruction)
   "Return a structured TDD code-change brief.
@@ -779,7 +828,7 @@ BOUNDARIES defines the stage limits, and INSTRUCTION is appended guidance."
 
 (defun ai-code--tdd-red-stage (function-name)
   "Handle the Red stage of TDD for FUNCTION-NAME: Write a failing test."
-  (let ((test-pattern-instruction ai-code--tdd-test-pattern-instruction))
+  (let ((test-pattern-instruction (ai-code--tdd-test-pattern-instruction-text)))
     (if (and (region-active-p) (not (derived-mode-p 'prog-mode)))
         ;; If there is a selected region, and it is not a prog-mode derived buffer,
         ;; assume this is the information / exception of failed test.
@@ -804,7 +853,7 @@ BOUNDARIES defines the stage limits, and INSTRUCTION is appended guidance."
                feature-desc
                function-name
                ai-code--tdd-red-boundaries
-               (concat ai-code--tdd-run-test-after-this-stage-instruction
+               (concat (ai-code--tdd-run-test-after-this-stage-instruction-text)
                        test-pattern-instruction))))
         (ai-code--insert-prompt tdd-instructions)))))
 
@@ -833,7 +882,7 @@ BOUNDARIES defines the stage limits, and INSTRUCTION is appended guidance."
            write-test-desc
            function-name
            "Follow TDD principles - write only the test now, not the implementation. Only update test file code."
-           ai-code--tdd-test-pattern-instruction)))
+           (ai-code--tdd-test-pattern-instruction-text))))
     (ai-code--insert-prompt tdd-instructions)))
 
 (defun ai-code--tdd-red-green-stage (function-name)
@@ -848,9 +897,9 @@ BOUNDARIES defines the stage limits, and INSTRUCTION is appended guidance."
           (ai-code--tdd-compose-code-change-brief
            feature-desc
            function-name
-           ai-code--tdd-red-green-boundaries
-           (concat ai-code--tdd-run-test-after-each-stage-instruction
-                   ai-code--tdd-test-pattern-instruction))))
+           (ai-code--tdd-red-green-boundaries)
+           (concat (ai-code--tdd-run-test-after-each-stage-instruction-text)
+                   (ai-code--tdd-test-pattern-instruction-text)))))
     (ai-code--insert-prompt tdd-instructions)))
 
 (defun ai-code--tdd-red-green-blue-stage (function-name)
@@ -865,9 +914,9 @@ BOUNDARIES defines the stage limits, and INSTRUCTION is appended guidance."
           (ai-code--tdd-compose-code-change-brief
            feature-desc
            function-name
-           ai-code--tdd-red-green-blue-boundaries
-           (concat ai-code--tdd-run-test-after-each-stage-instruction
-                   ai-code--tdd-test-pattern-instruction))))
+           (ai-code--tdd-red-green-blue-boundaries)
+           (concat (ai-code--tdd-run-test-after-each-stage-instruction-text)
+                   (ai-code--tdd-test-pattern-instruction-text)))))
     (ai-code--insert-prompt tdd-instructions)))
 
 (defun ai-code--tdd-green-stage (function-name)
@@ -890,7 +939,7 @@ to fix code."
            implementation-desc
            function-name
            ai-code--tdd-green-boundaries
-           ai-code--tdd-run-test-after-this-stage-instruction)))
+           (ai-code--tdd-run-test-after-this-stage-instruction-text))))
     (ai-code--insert-prompt tdd-instructions)))
 
 (defun ai-code--run-test-ai-assisted ()

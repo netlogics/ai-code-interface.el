@@ -14,13 +14,13 @@
 (require 'ai-code-harness)
 
 (defvar ai-code-mcp-agent-enabled-backends nil)
-(defvar ai-code--tdd-run-test-after-each-stage-instruction)
 (defvar ai-code-use-prompt-suffix)
 (defvar ai-code-prompt-suffix)
 
 (ert-deftest ai-code-test-resolve-tdd-suffix-includes-strict-stage-contract ()
   "Test that TDD suffix names Red and Green stages and forbids skipping."
-  (let ((ai-code--tdd-test-pattern-instruction ""))
+  (cl-letf (((symbol-function 'ai-code--tdd-test-pattern-instruction-text)
+            (lambda () "")))
     (let ((suffix (ai-code--test-after-code-change--resolve-tdd-suffix)))
       (should (string-match-p "Do not skip stages" suffix))
       (should (string-match-p "Stage 1 - Red" suffix))
@@ -29,56 +29,64 @@
 
 (ert-deftest ai-code-test-resolve-tdd-suffix-reuses-shared-each-stage-instruction ()
   "Test that TDD suffix can reuse shared each-stage instruction when available."
-  (let ((ai-code--tdd-test-pattern-instruction "")
-        (ai-code--tdd-run-test-after-each-stage-instruction
-         " SHARED_EACH_STAGE_TEST_INSTRUCTION"))
+  (cl-letf (((symbol-function 'ai-code--tdd-test-pattern-instruction-text)
+            (lambda () ""))
+           ((symbol-function 'ai-code--tdd-run-test-after-each-stage-instruction-text)
+            (lambda () " SHARED_EACH_STAGE_TEST_INSTRUCTION")))
     (should (string-match-p "SHARED_EACH_STAGE_TEST_INSTRUCTION"
-                            (ai-code--test-after-code-change--resolve-tdd-suffix)))))
+                           (ai-code--test-after-code-change--resolve-tdd-suffix)))))
 
 (ert-deftest ai-code-test-auto-test-harness-reference-suffix-tells-ai-to-use-local-harness ()
   "Test that harness reference prompt tells AI to read and use the harness."
   (let* ((temp-root (make-temp-file "ai-code-harness-root-" t))
-         (ai-files-dir (expand-file-name ".ai.code.files/" temp-root))
          (ai-code-auto-test-harness-cache-directory nil)
          (ai-code-mcp-agent-enabled-backends '(codex))
          (ai-code-selected-backend 'codex)
-         (ai-code--tdd-test-pattern-instruction ""))
+        (library-file (expand-file-name "ai-code.el" temp-root))
+        (expected-file (expand-file-name "prompt/tdd-with-refactoring-diagnostics.v1.md" temp-root)))
     (unwind-protect
-        (cl-letf (((symbol-function 'ai-code--ensure-files-directory)
-                   (lambda () ai-files-dir))
-                  ((symbol-function 'ai-code--git-root)
-                   (lambda (&optional _dir) temp-root)))
-          (let ((suffix (ai-code--auto-test-harness-reference-suffix 'tdd-with-refactoring)))
-            (should (string-match-p "Read the local harness file:" suffix))
-            (should (string-match-p "Use its instructions for this work\\." suffix))
-            (should (string-match-p
-                     (regexp-quote "@.ai.code.files/harness/tdd-with-refactoring-diagnostics.v1.md")
-                     suffix))))
+       (cl-letf (((symbol-function 'locate-library)
+                  (lambda (library &optional _nosuffix _path _interactive-call)
+                    (when (equal library "ai-code")
+                      library-file)))
+                 ((symbol-function 'ai-code--git-root)
+                  (lambda (&optional _dir) temp-root))
+                 ((symbol-function 'ai-code--tdd-test-pattern-instruction-text)
+                  (lambda () "")))
+         (let ((suffix (ai-code--auto-test-harness-reference-suffix 'tdd-with-refactoring)))
+           (should (string-match-p "Read the local harness file:" suffix))
+           (should (string-match-p "Use its instructions for this work\\." suffix))
+           (should (file-exists-p expected-file))
+           (should (string-match-p
+                    (regexp-quote "@prompt/tdd-with-refactoring-diagnostics.v1.md")
+                    suffix))))
       (delete-directory temp-root t))))
 
 (ert-deftest ai-code-test-resolve-tdd-suffix-includes-diagnostics-first-loop ()
   "Test that TDD suffix requires diagnostics checks before completion."
-  (let ((ai-code--tdd-test-pattern-instruction "")
-        (case-fold-search nil)
+  (let ((case-fold-search nil)
         (ai-code-mcp-agent-enabled-backends '(codex))
         (ai-code-selected-backend 'codex))
-    (let ((suffix (ai-code--test-after-code-change--resolve-tdd-suffix)))
-      (should (string-match-p "get_diagnostics" suffix))
-      (should (string-match-p "get_diagnostics MCP tool" suffix))
-      (should (string-match-p "baseline" suffix))
-      (should (string-match-p "no new diagnostics" suffix))
-      (should (string-match-p "diagnostics_baseline" suffix))
-      (should (string-match-p "since=\"baseline\"" suffix))
-      (should (string-match-p "clean" suffix)))))
+    (cl-letf (((symbol-function 'ai-code--tdd-test-pattern-instruction-text)
+               (lambda () "")))
+      (let ((suffix (ai-code--test-after-code-change--resolve-tdd-suffix)))
+        (should (string-match-p "get_diagnostics" suffix))
+        (should (string-match-p "get_diagnostics MCP tool" suffix))
+        (should (string-match-p "baseline" suffix))
+        (should (string-match-p "no new diagnostics" suffix))
+        (should (string-match-p "diagnostics_baseline" suffix))
+        (should (string-match-p "since=\"baseline\"" suffix))
+        (should (string-match-p "clean" suffix))))))
 
 (ert-deftest ai-code-test-resolve-tdd-suffix-omits-diagnostics-for-non-mcp-backend ()
   "Test that TDD suffix omits diagnostics for unsupported backends."
-  (let ((ai-code--tdd-test-pattern-instruction "")
-        (ai-code-mcp-agent-enabled-backends '(codex))
+  (let ((ai-code-mcp-agent-enabled-backends '(codex))
         (ai-code-selected-backend 'gemini))
-    (let ((suffix (ai-code--test-after-code-change--resolve-tdd-suffix)))
-      (should-not (string-match-p "get_diagnostics" suffix))
-      (should-not (string-match-p "no new diagnostics" suffix)))))
+    (cl-letf (((symbol-function 'ai-code--tdd-test-pattern-instruction-text)
+               (lambda () "")))
+      (let ((suffix (ai-code--test-after-code-change--resolve-tdd-suffix)))
+        (should-not (string-match-p "get_diagnostics" suffix))
+        (should-not (string-match-p "no new diagnostics" suffix))))))
 
 (ert-deftest ai-code-test-maybe-append-diagnostics-harness-instruction-preserves-nil-suffix ()
   "Test that diagnostics harness logic preserves a nil suffix."
@@ -87,28 +95,32 @@
     (should-not (ai-code--maybe-append-diagnostics-harness-instruction nil))
     (should-not (ai-code--maybe-append-diagnostics-harness-instruction nil t))))
 
-(ert-deftest ai-code-test-auto-test-harness-directory-defaults-to-ai-code-files-harness ()
-  "Test that harness directory defaults to `.ai.code.files/harness/`."
+(ert-deftest ai-code-test-auto-test-harness-directory-defaults-to-package-prompt-directory ()
+  "Test that harness directory defaults to the package `prompt/` directory."
   (let* ((temp-root (make-temp-file "ai-code-harness-root-" t))
-         (ai-files-dir (expand-file-name ".ai.code.files/" temp-root))
+         (library-file (expand-file-name "ai-code.el" temp-root))
          (ai-code-auto-test-harness-cache-directory nil))
     (unwind-protect
-        (cl-letf (((symbol-function 'ai-code--ensure-files-directory)
-                   (lambda () ai-files-dir)))
-          (should (equal (expand-file-name "harness/" ai-files-dir)
+        (cl-letf (((symbol-function 'locate-library)
+                   (lambda (library &optional _nosuffix _path _interactive-call)
+                     (when (equal library "ai-code")
+                       library-file))))
+          (should (equal (expand-file-name "prompt/" temp-root)
                          (ai-code--auto-test-harness-directory))))
       (delete-directory temp-root t))))
 
 (ert-deftest ai-code-test-ensure-auto-test-harness-cache-directory-tolerates-unbound-custom ()
   "Test that harness directory creation falls back when the custom is unbound."
   (let* ((temp-root (make-temp-file "ai-code-harness-root-" t))
-         (ai-files-dir (expand-file-name ".ai.code.files/" temp-root))
-         (expected-directory (expand-file-name "harness/" ai-files-dir))
+         (library-file (expand-file-name "ai-code.el" temp-root))
+         (expected-directory (expand-file-name "prompt/" temp-root))
          (was-bound (boundp 'ai-code-auto-test-harness-cache-directory))
          (original-value (when was-bound ai-code-auto-test-harness-cache-directory)))
     (unwind-protect
-        (cl-letf (((symbol-function 'ai-code--ensure-files-directory)
-                   (lambda () ai-files-dir)))
+        (cl-letf (((symbol-function 'locate-library)
+                   (lambda (library &optional _nosuffix _path _interactive-call)
+                     (when (equal library "ai-code")
+                       library-file))))
           (makunbound 'ai-code-auto-test-harness-cache-directory)
           (should (equal expected-directory
                          (ai-code--ensure-auto-test-harness-cache-directory)))
@@ -121,7 +133,7 @@
 (ert-deftest ai-code-test-auto-test-harness-prompt-path-uses-repo-relative-at-path ()
   "Test that harness prompt path becomes an `@` repo-relative path."
   (let* ((temp-root (make-temp-file "ai-code-harness-root-" t))
-         (harness-file (expand-file-name ".ai.code.files/harness/tdd.v1.md" temp-root)))
+         (harness-file (expand-file-name "prompt/tdd.v1.md" temp-root)))
     (unwind-protect
         (progn
           (make-directory (file-name-directory harness-file) t)
@@ -129,7 +141,7 @@
             (insert "harness"))
           (cl-letf (((symbol-function 'ai-code--git-root)
                      (lambda (&optional _dir) temp-root)))
-            (should (equal "@.ai.code.files/harness/tdd.v1.md"
+            (should (equal "@prompt/tdd.v1.md"
                            (ai-code--auto-test-harness-prompt-path harness-file)))))
       (delete-directory temp-root t))))
 
@@ -151,16 +163,16 @@
                            (ai-code--auto-test-harness-prompt-path harness-file)))))
       (delete-directory temp-root t))))
 
-(ert-deftest ai-code-test-auto-test-harness-cache-directory-docs-cover-non-repo-fallback ()
-  "Test that the harness directory custom documents the non-repo fallback."
+(ert-deftest ai-code-test-auto-test-harness-cache-directory-docs-cover-package-prompt-default ()
+  "Test that the harness directory custom documents the package prompt default."
   (let ((doc (documentation-property 'ai-code-auto-test-harness-cache-directory
                                      'variable-documentation)))
-    (should (string-match-p "Outside a Git repository" doc))
-    (should (string-match-p "default-directory" doc))
+    (should (string-match-p "`prompt/` directory" doc))
+    (should (string-match-p "installed[[:space:]\n]+`ai-code` package" doc))
     (should
      (equal
       '(choice
-        (const :tag "Use default harness directory (.ai.code.files/harness in a repo, or harness under default-directory otherwise)"
+        (const :tag "Use bundled prompt directory under the ai-code package"
                nil)
         directory)
       (get 'ai-code-auto-test-harness-cache-directory 'custom-type)))))
@@ -197,8 +209,7 @@
 (ert-deftest ai-code-test-set-auto-test-type-ask-me-clears-persistent-suffix ()
   "Test that setting auto test type to ask-me clears the persistent suffix."
   (let ((ai-code-auto-test-suffix "old")
-        (ai-code-auto-test-type nil)
-        (ai-code--tdd-test-pattern-instruction nil))
+        (ai-code-auto-test-type nil))
     (ai-code--apply-auto-test-type 'ask-me)
     (should (eq 'ask-me ai-code-auto-test-type))
     (should-not ai-code-auto-test-suffix)))
@@ -214,40 +225,44 @@
 (ert-deftest ai-code-test-resolve-test-after-change-suffix-includes-diagnostics-for-mcp-backend ()
   "Test that test-after-change suffix points to the diagnostics harness file."
   (let* ((temp-root (make-temp-file "ai-code-harness-root-" t))
-         (ai-files-dir (expand-file-name ".ai.code.files/" temp-root))
+        (library-file (expand-file-name "ai-code.el" temp-root))
          (ai-code-auto-test-type 'test-after-change)
          (ai-code-auto-test-harness-cache-directory nil)
          (ai-code-mcp-agent-enabled-backends '(codex))
          (ai-code-selected-backend 'codex))
     (unwind-protect
-        (cl-letf (((symbol-function 'ai-code--ensure-files-directory)
-                   (lambda () ai-files-dir))
+       (cl-letf (((symbol-function 'locate-library)
+                  (lambda (library &optional _nosuffix _path _interactive-call)
+                    (when (equal library "ai-code")
+                      library-file)))
                   ((symbol-function 'ai-code--git-root)
                    (lambda (&optional _dir) temp-root)))
-          (let ((suffix (ai-code--resolve-auto-test-suffix-for-send)))
-            (should (string-match-p
-                     (regexp-quote "@.ai.code.files/harness/test-after-change-diagnostics.v1.md")
-                     suffix))))
+         (let ((suffix (ai-code--resolve-auto-test-suffix-for-send)))
+           (should (string-match-p
+                    (regexp-quote "@prompt/test-after-change-diagnostics.v1.md")
+                    suffix))))
       (delete-directory temp-root t))))
 
 (ert-deftest ai-code-test-resolve-test-after-change-suffix-omits-diagnostics-for-non-mcp-backend ()
   "Test that unsupported backends use the non-diagnostics harness variant."
   (let* ((temp-root (make-temp-file "ai-code-harness-root-" t))
-         (ai-files-dir (expand-file-name ".ai.code.files/" temp-root))
-         (ai-code-auto-test-type 'test-after-change)
-         (ai-code-auto-test-harness-cache-directory nil)
-         (ai-code-mcp-agent-enabled-backends '(codex))
-         (ai-code-selected-backend 'gemini))
+        (library-file (expand-file-name "ai-code.el" temp-root))
+        (ai-code-auto-test-type 'test-after-change)
+        (ai-code-auto-test-harness-cache-directory nil)
+        (ai-code-mcp-agent-enabled-backends '(codex))
+        (ai-code-selected-backend 'gemini))
     (unwind-protect
-        (cl-letf (((symbol-function 'ai-code--ensure-files-directory)
-                   (lambda () ai-files-dir))
+       (cl-letf (((symbol-function 'locate-library)
+                  (lambda (library &optional _nosuffix _path _interactive-call)
+                    (when (equal library "ai-code")
+                      library-file)))
                   ((symbol-function 'ai-code--git-root)
                    (lambda (&optional _dir) temp-root)))
-          (let ((suffix (ai-code--resolve-auto-test-suffix-for-send)))
-            (should (string-match-p
-                     (regexp-quote "@.ai.code.files/harness/test-after-change.v1.md")
-                     suffix))
-            (should-not (string-match-p "diagnostics.v1.md" suffix))))
+         (let ((suffix (ai-code--resolve-auto-test-suffix-for-send)))
+           (should (string-match-p
+                    (regexp-quote "@prompt/test-after-change.v1.md")
+                    suffix))
+           (should-not (string-match-p "diagnostics.v1.md" suffix))))
       (delete-directory temp-root t))))
 
 (ert-deftest ai-code-test-resolve-auto-test-type-for-send-off ()
@@ -674,23 +689,26 @@
 (ert-deftest ai-code-test-resolve-auto-test-suffix-for-send-ask-me-tdd-with-refactoring ()
   "Test that ask-me resolves to the repo-local TDD harness reference."
   (let* ((temp-root (make-temp-file "ai-code-harness-root-" t))
-         (ai-files-dir (expand-file-name ".ai.code.files/" temp-root))
+        (library-file (expand-file-name "ai-code.el" temp-root))
          (ai-code-auto-test-harness-cache-directory nil)
          (ai-code-auto-test-type 'ask-me)
          (ai-code-mcp-agent-enabled-backends '(codex))
-         (ai-code-selected-backend 'codex)
-         (ai-code--tdd-test-pattern-instruction ""))
+        (ai-code-selected-backend 'codex))
     (unwind-protect
-        (cl-letf (((symbol-function 'ai-code--ensure-files-directory)
-                   (lambda () ai-files-dir))
+       (cl-letf (((symbol-function 'locate-library)
+                  (lambda (library &optional _nosuffix _path _interactive-call)
+                    (when (equal library "ai-code")
+                      library-file)))
                   ((symbol-function 'ai-code--git-root)
                    (lambda (&optional _dir) temp-root))
+                  ((symbol-function 'ai-code--tdd-test-pattern-instruction-text)
+                   (lambda () ""))
                   ((symbol-function 'ai-code--read-auto-test-type-choice)
                    (lambda () 'tdd-with-refactoring)))
-          (let ((suffix (ai-code--resolve-auto-test-suffix-for-send)))
-            (should (string-match-p
-                     (regexp-quote "@.ai.code.files/harness/tdd-with-refactoring-diagnostics.v1.md")
-                     suffix))))
+         (let ((suffix (ai-code--resolve-auto-test-suffix-for-send)))
+           (should (string-match-p
+                    (regexp-quote "@prompt/tdd-with-refactoring-diagnostics.v1.md")
+                    suffix))))
       (delete-directory temp-root t))))
 
 (ert-deftest ai-code-test-resolve-auto-test-suffix-for-send-ask-me-no-test ()

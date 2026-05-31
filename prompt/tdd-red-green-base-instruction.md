@@ -1,0 +1,1 @@
+ Follow strict TDD stages. Do not skip stages. Stage 1 - Red: update only test code and write the smallest failing test that captures the requested behavior. Do not modify source code during Red. Stage 2 - Green: after confirming the new test fails for the expected reason, update the minimum source code needed to make it pass. Do not refactor during Green.

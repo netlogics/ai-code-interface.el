@@ -975,13 +975,11 @@ Disable future auto-display of the onboarding quickstart." t)
 User-provided prompt suffix for test-after-code-change.")
 (custom-autoload 'ai-code-test-after-code-change-suffix "ai-code-harness" t)
 (defvar ai-code-auto-test-harness-cache-directory nil "\
-Directory used to cache generated auto-test harness files.
+Directory used to store auto-test harness prompt files.
 
-When nil, store harness files under `harness/` inside the directory returned
-by `ai-code--ensure-files-directory`.  In a Git repository, that is typically
-`.ai.code.files/harness/` under the current repository so prompts can cite
-them with `@`-prefixed repo-relative paths.  Outside a Git repository, this
-falls back to `harness/` under `default-directory`.
+When nil, use the `prompt/` directory that ships with the installed
+`ai-code` package.  This keeps harness prompt files in the package itself
+instead of duplicating them under each project's `.ai.code.files/`.
 
 Set this to a directory path to override the default location.")
 (custom-autoload 'ai-code-auto-test-harness-cache-directory "ai-code-harness" t)
