@@ -18,6 +18,47 @@
 (defvar ai-code-use-prompt-suffix)
 (defvar ai-code-prompt-suffix)
 
+(ert-deftest ai-code-test-read-bundled-prompt-file-loads-from-prompt-directory ()
+  "Test that bundled prompt files are loaded from the package prompt directory."
+  (let* ((temp-root (make-temp-file "ai-code-prompt-root-" t))
+         (prompt-file (expand-file-name "prompt/sample.md" temp-root))
+         (original-locate-library (symbol-function 'locate-library)))
+    (unwind-protect
+        (progn
+          (make-directory (file-name-directory prompt-file) t)
+          (with-temp-file prompt-file
+            (insert "Sample prompt body\n"))
+          (cl-letf (((symbol-function 'locate-library)
+                     (lambda (library &optional nosuffix path interactive-call)
+                       (if (equal library "ai-code")
+                           (expand-file-name "ai-code.el" temp-root)
+                         (funcall original-locate-library
+                                  library nosuffix path interactive-call)))))
+            (should (equal "Sample prompt body"
+                           (ai-code--read-bundled-prompt-file "prompt/sample.md")))))
+      (delete-directory temp-root t))))
+
+(ert-deftest ai-code-test-tdd-instructions-come-from-bundled-prompt-files ()
+  "Test that harness TDD instructions are sourced from bundled prompt files."
+  (should
+   (equal ai-code--tdd-test-pattern-instruction
+          (ai-code--read-bundled-prompt-file "prompt/tdd-test-pattern-instruction.md")))
+  (should
+   (equal ai-code--tdd-run-test-after-this-stage-instruction
+          (ai-code--read-bundled-prompt-file "prompt/tdd-run-test-after-this-stage-instruction.md")))
+  (should
+   (equal ai-code--tdd-run-test-after-each-stage-instruction
+          (ai-code--read-bundled-prompt-file "prompt/tdd-run-test-after-each-stage-instruction.md")))
+  (should
+   (equal ai-code--tdd-red-green-base-instruction
+          (ai-code--read-bundled-prompt-file "prompt/tdd-red-green-base-instruction.md")))
+  (should
+   (equal ai-code--tdd-red-green-tail-instruction
+          (ai-code--read-bundled-prompt-file "prompt/tdd-red-green-tail-instruction.md")))
+  (should
+   (equal ai-code--tdd-with-refactoring-extension-instruction
+          (ai-code--read-bundled-prompt-file "prompt/tdd-with-refactoring-extension-instruction.md"))))
+
 (ert-deftest ai-code-test-resolve-tdd-suffix-includes-strict-stage-contract ()
   "Test that TDD suffix names Red and Green stages and forbids skipping."
   (let ((ai-code--tdd-test-pattern-instruction ""))

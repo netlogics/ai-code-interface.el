@@ -1,0 +1,1 @@
+ Run test after each stage and output the summary of test result. For each stage, list the stage name, files changed, exact test command / result, and whether the result matches the goal of that stage. List the public API / log key / config key change if there is.
