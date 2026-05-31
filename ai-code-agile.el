@@ -48,14 +48,18 @@
     (or (locate-library "ai-code")
         load-file-name
         buffer-file-name
-        (expand-file-name "ai-code.el" default-directory)))))
+        (and (file-exists-p (expand-file-name "ai-code.el" default-directory))
+             (expand-file-name "ai-code.el" default-directory))
+        (error "Cannot locate ai-code package directory for bundled prompts")))))
 
 (defun ai-code--bundled-prompt-directory ()
   "Return the directory that stores bundled prompt markdown files."
   (expand-file-name "prompt/" (ai-code--bundled-prompt-root)))
 
 (defun ai-code--ensure-bundled-prompt-file (file-name)
-  "Ensure bundled prompt FILE-NAME exists and return its path."
+  "Ensure bundled prompt FILE-NAME exists and return its path.
+Only prompt files listed in `ai-code--bundled-prompt-defaults` are
+auto-generated when missing."
   (let* ((directory (ai-code--bundled-prompt-directory))
          (file-path (expand-file-name file-name directory)))
     (unless (file-exists-p file-path)

@@ -47,7 +47,10 @@
           (let ((content (ai-code--read-bundled-prompt-file
                           "tdd-test-pattern-instruction.md")))
             (should (file-exists-p prompt-file))
-            (should (string-match-p "Follow the test-code pattern" content))
+            (should (equal content
+                           (alist-get "tdd-test-pattern-instruction.md"
+                                      ai-code--bundled-prompt-defaults
+                                      nil nil #'string=)))
             (with-temp-buffer
               (insert-file-contents prompt-file)
               (should (equal content (string-trim-right (buffer-string)))))))
