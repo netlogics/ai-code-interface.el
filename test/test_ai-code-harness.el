@@ -38,6 +38,25 @@
                            (ai-code--read-bundled-prompt-file "prompt/sample.md")))))
       (delete-directory temp-root t))))
 
+(ert-deftest ai-code-test-read-bundled-prompt-file-regenerates-known-missing-file ()
+  "Test that known bundled prompt files are recreated when missing."
+  (let* ((temp-root (make-temp-file "ai-code-prompt-root-" t))
+         (prompt-file (expand-file-name "prompt/tdd-red-green-base-instruction.md" temp-root))
+         (original-locate-library (symbol-function 'locate-library)))
+    (unwind-protect
+        (cl-letf (((symbol-function 'locate-library)
+                   (lambda (library &optional nosuffix path interactive-call)
+                     (if (equal library "ai-code")
+                         (expand-file-name "ai-code.el" temp-root)
+                       (funcall original-locate-library
+                                library nosuffix path interactive-call)))))
+          (should-not (file-exists-p prompt-file))
+          (should (equal ai-code--tdd-red-green-base-instruction
+                         (ai-code--read-bundled-prompt-file
+                          "prompt/tdd-red-green-base-instruction.md")))
+          (should (file-exists-p prompt-file)))
+      (delete-directory temp-root t))))
+
 (ert-deftest ai-code-test-tdd-instructions-come-from-bundled-prompt-files ()
   "Test that harness TDD instructions are sourced from bundled prompt files."
   (should

@@ -32,12 +32,43 @@
         (locate-library "ai-code")
         default-directory))))
 
+(defconst ai-code--bundled-prompt-fallback-alist
+  '(("prompt/tdd-test-pattern-instruction.md"
+     . "\nFollow the test-code pattern in the current project. Write the test-code in the test-file. If the test-file does not exist, create it using the same test-filename pattern used in this repository.")
+    ("prompt/tdd-run-test-after-this-stage-instruction.md"
+     . " Run test after this stage and output the summary of test result. State whether the result matches the goal of this stage. List the files changed and exact test command / result. List the public API / log key / config key change if there is.")
+    ("prompt/tdd-run-test-after-each-stage-instruction.md"
+     . " Run test after each stage and output the summary of test result. For each stage, list the stage name, files changed, exact test command / result, and whether the result matches the goal of that stage. List the public API / log key / config key change if there is.")
+    ("prompt/tdd-red-green-base-instruction.md"
+     . " Follow strict TDD stages. Do not skip stages. Stage 1 - Red: update only test code and write the smallest failing test that captures the requested behavior. Do not modify source code during Red. Stage 2 - Green: after confirming the new test fails for the expected reason, update the minimum source code needed to make it pass. Do not refactor during Green.")
+    ("prompt/tdd-red-green-tail-instruction.md"
+     . " Keep the changes narrowly scoped to the requested behavior. Only update the relevant test and source code. Do not add extra features or unrelated cleanup.")
+    ("prompt/tdd-with-refactoring-extension-instruction.md"
+     . " Stage 3 - Blue: after Green is passing, refactor only the files changed in Red/Green. Preserve behavior and do not add features. First review the code diff (including tests) and identify the highest-impact cleanup. Then apply focused refactoring that improves readability, keeps classes/functions small and cohesive / easy to test, reduces duplication, and simplifies naming and control flow."))
+  "Fallback prompt text used to restore bundled prompt assets when missing.")
+
+(defun ai-code--ensure-bundled-prompt-file (relative-path)
+  "Return absolute path for RELATIVE-PATH, creating known bundled prompt files if missing."
+  (let ((file-path (expand-file-name relative-path (ai-code--bundled-prompt-directory))))
+    (unless (file-exists-p file-path)
+      (if-let ((content (alist-get relative-path
+                                   ai-code--bundled-prompt-fallback-alist
+                                   nil nil #'string=)))
+          (progn
+            (make-directory (file-name-directory file-path) t)
+            (with-temp-file file-path
+              (insert content)
+              (unless (bolp)
+                (insert "\n"))))
+        (signal 'file-error (list "Bundled prompt file does not exist" file-path))))
+    file-path))
+
 (defun ai-code--read-bundled-prompt-file (relative-path)
   "Return bundled prompt text for RELATIVE-PATH.
 RELATIVE-PATH is resolved relative to the package root directory."
   (with-temp-buffer
     (insert-file-contents
-     (expand-file-name relative-path (ai-code--bundled-prompt-directory)))
+     (ai-code--ensure-bundled-prompt-file relative-path))
     (string-remove-suffix "\n" (buffer-string))))
 
 (defconst ai-code--refactoring-techniques-catalog
