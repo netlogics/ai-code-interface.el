@@ -275,7 +275,9 @@ Optional PROJECT-FILES supplies the project file list."
 
 (defun ai-code-session-link--cheap-file-link-candidate-p (path &optional root)
   "Return non-nil when PATH looks worth linkifying without project scans.
-Optional ROOT is the session project root used for local existence checks."
+Optional ROOT is the session project root used for bounded local existence
+checks. Expensive project-wide resolution stays in
+`ai-code-session-link--resolve-session-file' on activation."
   (when-let ((normalized (ai-code-session-link--normalize-file path)))
     (let ((extension (file-name-extension normalized)))
       (or (ai-code-session-link--resolve-existing-local-path normalized root)

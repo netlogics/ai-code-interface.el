@@ -504,7 +504,7 @@
       (when (file-directory-p root)
         (delete-directory root t)))))
 
-(ert-deftest ai-code-session-link-test-open-file-link-resolves-basename-on-demand ()
+(ert-deftest ai-code-session-link-test--open-file-link-resolves-basename-on-demand ()
   "Basename file links should still resolve when the user activates them."
   (let* ((root (make-temp-file "ai-code-session-links-basename-open-" t))
          (src-dir (expand-file-name "src" root))
