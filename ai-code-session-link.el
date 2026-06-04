@@ -273,6 +273,20 @@ Optional PROJECT-FILES supplies the project file list."
   (seq-find #'file-exists-p
             (ai-code-session-link--local-path-candidates path root)))
 
+(defun ai-code-session-link--cheap-file-link-candidate-p (path &optional root)
+  "Return non-nil when PATH looks worth linkifying without project scans.
+Optional ROOT is the session project root used for local existence checks."
+  (when-let ((normalized (ai-code-session-link--normalize-file path)))
+    (let ((extension (file-name-extension normalized)))
+      (or (ai-code-session-link--resolve-existing-local-path normalized root)
+          (and (not (file-name-absolute-p normalized))
+               (or (string-prefix-p "./" normalized)
+                   (string-prefix-p "../" normalized)
+                   (string-match-p "[/\\\\]" normalized)
+                   (and extension
+                        (let ((case-fold-search nil))
+                          (string-match-p "\\`[[:lower:][:digit:]]+\\'" extension)))))))))
+
 (defun ai-code-session-link--resolve-session-file (path)
   "Resolve PATH to an existing local path or a matching project file."
   (let* ((root (ai-code-session-link--project-root-for-paths))
@@ -464,8 +478,9 @@ Optional NEXT-FILE-START caps the scan boundary."
                 (setq link-count (1+ link-count))))))))))
 
 (defun ai-code-session-link--collect-file-links (start end)
-  "Return resolved file link matches between START and END."
-  (let ((seen-starts (make-hash-table :test 'eql))
+  "Return file link matches between START and END without eager resolution."
+  (let ((root (ai-code-session-link--project-root-for-paths))
+        (seen-starts (make-hash-table :test 'eql))
         file-links)
     (save-excursion
       (dolist (pattern ai-code-session-link--file-patterns)
@@ -475,7 +490,7 @@ Optional NEXT-FILE-START caps the scan boundary."
                 (match-end (match-end 0)))
             (unless (gethash match-start seen-starts)
               (let ((path (match-string-no-properties (nth 1 pattern))))
-                (when (ai-code-session-link--resolve-session-file path)
+                (when (ai-code-session-link--cheap-file-link-candidate-p path root)
                   (puthash match-start t seen-starts)
                   (push (list :start match-start
                               :end match-end
