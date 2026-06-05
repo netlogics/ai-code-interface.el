@@ -1,7 +1,7 @@
 ;;; ai-code.el --- Unified interface for AI coding backends -*- lexical-binding: t; -*-
 
 ;; Author: Kang Tu <tninja@gmail.com>
-;; Version: 1.82
+;; Version: 1.84
 ;; Package-Requires: ((emacs "29.1") (transient "0.9.0") (magit "2.1.0"))
 ;; URL: https://github.com/tninja/ai-code-interface.el
 
