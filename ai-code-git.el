@@ -49,6 +49,7 @@ Candidate values:
 (declare-function ai-code--insert-prompt "ai-code-prompt-mode" (prompt-text))
 (declare-function ai-code--ensure-files-directory "ai-code-utils" ())
 (declare-function ai-code--git-root "ai-code-utils" (&optional dir))
+(declare-function ai-code--generate-task-filename "ai-code-prompt-mode" (task-name))
 
 (defvar ai-code-files-dir-name)
 
@@ -760,21 +761,46 @@ The worktree path for START-POINT is
                                        (file-truename path) branch)
                      (magit-call-git "worktree" "add" "-b" branch
                                      (file-truename path) start-point)))
-        (magit-diff-visit-directory path)))))
+        (dired path)
+        (when (y-or-n-p "Create a task file for this worktree? ")
+          (ai-code--worktree-create-and-link-task-file git-root path branch))))))
+
+(defun ai-code--worktree-create-and-link-task-file (git-root worktree-path branch)
+  "Create a task file in GIT-ROOT and symlink it into WORKTREE-PATH.
+BRANCH is used as the default task name."
+  (let* ((files-dir (expand-file-name ai-code-files-dir-name git-root))
+         (task-name (ai-code-read-string "Task name: " branch))
+         (generated-filename (ai-code--generate-task-filename task-name))
+         (confirmed-filename (ai-code-read-string "Task filename: " generated-filename)))
+    (unless (string-suffix-p ".org" confirmed-filename)
+      (setq confirmed-filename (concat confirmed-filename ".org")))
+    (unless (file-directory-p files-dir)
+      (make-directory files-dir t))
+    (let ((task-file (expand-file-name confirmed-filename files-dir)))
+      (unless (file-exists-p task-file)
+        (with-temp-file task-file
+          (ai-code--initialize-task-file-content task-name "")))
+      (let ((symlink-path (expand-file-name confirmed-filename worktree-path)))
+        (unless (file-exists-p symlink-path)
+          (make-symbolic-link task-file symlink-path)))
+      (find-file-other-window task-file))))
 
 ;;;###autoload
 (defun ai-code-git-worktree-action (&optional prefix)
   "Dispatch worktree action by PREFIX.
 Without PREFIX, call `ai-code-git-worktree-branch'.
-With PREFIX (for example \\[universal-argument]), call
-`magit-worktree-status'."
+With PREFIX (for example \\[universal-argument]), open Dired on
+the centralized worktree directory."
   (interactive "P")
-  ;; DONE: if the git branch to be created already exist, let user know and keep working
   (unless (and (stringp ai-code-git-worktree-root)
                (> (length ai-code-git-worktree-root) 0))
     (user-error "Please configure `ai-code-git-worktree-root` first"))
   (if prefix
-      (call-interactively #'magit-worktree-status)
+      (let* ((git-root (ai-code--validate-git-repository))
+             (repo-worktree-dir (ai-code--git-worktree-repo-dir git-root)))
+        (if (file-directory-p repo-worktree-dir)
+            (dired repo-worktree-dir)
+          (user-error "Worktree directory does not exist: %s" repo-worktree-dir)))
     (call-interactively #'ai-code-git-worktree-branch)))
 
 (provide 'ai-code-git)
