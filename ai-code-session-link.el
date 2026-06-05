@@ -149,6 +149,14 @@ terminal output redraw."
          1 nil nil))
   "Patterns used to detect file-like session links.")
 
+(defconst ai-code-session-link--basename-file-extensions
+  '("bash" "c" "cc" "cjs" "clj" "cpp" "cs" "css" "cxx" "el" "erl" "ex"
+    "exs" "fish" "go" "h" "hh" "hpp" "hrl" "html" "java" "js" "json" "jsx"
+    "kt" "kts" "less" "lock" "m" "md" "mjs" "mm" "org" "php" "py" "rb" "rs"
+    "scala" "scss" "sh" "sql" "svelte" "swift" "toml" "ts" "tsx" "txt" "vue"
+    "xml" "yaml" "yml" "zsh")
+  "Lowercase extensions accepted for basename file links.")
+
 (defvar-local ai-code-session-link--linkify-timer nil
   "Timer used to re-linkify recent terminal output after redraw settles.")
 
@@ -274,9 +282,9 @@ Optional PROJECT-FILES supplies the project file list."
             (ai-code-session-link--local-path-candidates path root)))
 
 (defun ai-code-session-link--cheap-file-link-candidate-p (path &optional root)
-  "Return non-nil when PATH looks worth linkifying without project scans.
+  "Return non-nil when PATH is worth linkifying without project scans.
 Optional ROOT is the session project root used for bounded local existence
-checks. Expensive project-wide resolution stays in
+checks.  Expensive project-wide resolution stays in
 `ai-code-session-link--resolve-session-file' on activation."
   (when-let ((normalized (ai-code-session-link--normalize-file path)))
     (let ((extension (file-name-extension normalized)))
@@ -286,8 +294,8 @@ checks. Expensive project-wide resolution stays in
                    (string-prefix-p "../" normalized)
                    (string-match-p "[/\\\\]" normalized)
                    (and extension
-                        (let ((case-fold-search nil))
-                          (string-match-p "\\`[[:lower:][:digit:]]+\\'" extension)))))))))
+                        (member (downcase extension)
+                                ai-code-session-link--basename-file-extensions))))))))
 
 (defun ai-code-session-link--resolve-session-file (path)
   "Resolve PATH to an existing local path or a matching project file."

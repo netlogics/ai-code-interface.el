@@ -147,6 +147,33 @@
       (when (file-directory-p root)
         (delete-directory root t)))))
 
+(ert-deftest ai-code-session-link-test-linkify-session-region-matches-uppercase-project-basename ()
+  "Linkify uppercase or mixed-case basename references for project files."
+  (let* ((root (make-temp-file "ai-code-session-links-uppercase-basename-" t))
+         (src-dir (expand-file-name "src" root))
+         (c-file (expand-file-name "Foo.C" src-dir))
+         (readme-file (expand-file-name "README.MD" src-dir)))
+    (unwind-protect
+        (progn
+          (make-directory src-dir t)
+          (with-temp-file c-file
+            (insert "int main(void) { return 0; }\n"))
+          (with-temp-file readme-file
+            (insert "# README\n"))
+          (with-temp-buffer
+            (setq-local ai-code-backends-infra--session-directory root)
+            (insert "Foo.C:12\nREADME.MD\n")
+            (ai-code-session-link--linkify-session-region (point-min) (point-max))
+            (goto-char (point-min))
+            (search-forward-regexp "Foo\\.C:12")
+            (should (equal (get-text-property (match-beginning 0) 'ai-code-session-link)
+                           "Foo.C:12"))
+            (search-forward-regexp "README\\.MD")
+            (should (equal (get-text-property (match-beginning 0) 'ai-code-session-link)
+                           "README.MD"))))
+      (when (file-directory-p root)
+        (delete-directory root t)))))
+
 (ert-deftest ai-code-session-link-test-linkify-session-region-symbol-near-file-link-across-lines ()
   "Linkify a nearby code symbol after a file link across line breaks."
   (let* ((root (make-temp-file "ai-code-session-links-symbol-nearby-" t))
@@ -521,12 +548,12 @@
                        (set-buffer source-buffer)
                        source-buffer)))
             (let ((default-directory root))
-              (setq ai-code-backends-infra--session-directory root)
-              (should (ai-code-session-link--open-file-link "Foo.java:2"))
-              (should (buffer-live-p source-buffer))
-              (with-current-buffer source-buffer
-                (should (equal (buffer-file-name) file))
-                (should (= (line-number-at-pos) 2))))))
+              (let ((ai-code-backends-infra--session-directory root))
+                (should (ai-code-session-link--open-file-link "Foo.java:2"))
+                (should (buffer-live-p source-buffer))
+                (with-current-buffer source-buffer
+                  (should (equal (buffer-file-name) file))
+                  (should (= (line-number-at-pos) 2)))))))
       (when (and source-buffer (buffer-live-p source-buffer))
         (kill-buffer source-buffer))
       (when (file-directory-p root)
@@ -583,7 +610,7 @@
                        source-buffer))
                     ((symbol-function 'xref-find-definitions)
                      (lambda (_identifier)
-                       (error "xref unavailable")))
+                       (error "Xref unavailable")))
                     ((symbol-function 'message)
                      (lambda (&rest _args) nil)))
             (with-temp-buffer
@@ -625,7 +652,7 @@
                        source-buffer))
                     ((symbol-function 'xref-find-definitions)
                      (lambda (_identifier)
-                       (error "xref unavailable")))
+                       (error "Xref unavailable")))
                     ((symbol-function 'helm-gtags-find-tag)
                      (lambda (identifier)
                        (setq gtags-symbol identifier)
