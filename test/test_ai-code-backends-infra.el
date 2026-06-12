@@ -2465,6 +2465,44 @@ The result is a cons of whether SYMBOL is bound and its default value."
       (when (buffer-live-p buffer)
         (kill-buffer buffer)))))
 
+(ert-deftest test-ai-code-backends-infra-configure-session-buffer-keeps-multiline-local ()
+  "Multiline keybindings should not leak through shared mode maps."
+  (let ((shared-map (make-sparse-keymap))
+        (configured (generate-new-buffer " *ai-code-configured*"))
+        (unconfigured (generate-new-buffer " *ai-code-unconfigured*")))
+    (unwind-protect
+        (cl-letf (((symbol-function 'ai-code-session-link--linkify-session-region)
+                   (lambda (&rest _args) nil)))
+          (with-current-buffer configured
+            (use-local-map shared-map))
+          (with-current-buffer unconfigured
+            (use-local-map shared-map))
+          (ai-code-backends-infra--configure-session-buffer
+           configured nil "\\\r\n")
+          (with-current-buffer configured
+            (should (eq (lookup-key (current-local-map) (kbd "S-<return>"))
+                        #'ai-code-backends-infra--terminal-send-multiline-input))
+            (should (equal ai-code-backends-infra--multiline-input-sequence
+                           "\\\r\n")))
+          (should-not (lookup-key shared-map (kbd "S-<return>")))
+          (with-current-buffer unconfigured
+            (should-not (lookup-key (current-local-map) (kbd "S-<return>"))))
+          (define-key shared-map (kbd "S-<return>")
+                      #'ai-code-backends-infra--terminal-send-multiline-input)
+          (with-current-buffer unconfigured
+            (use-local-map shared-map))
+          (ai-code-backends-infra--configure-session-buffer
+           unconfigured nil nil)
+          (with-current-buffer unconfigured
+            (should-not ai-code-backends-infra--multiline-input-sequence)
+            (should-not (lookup-key (current-local-map) (kbd "S-<return>"))))
+          (should (eq (lookup-key shared-map (kbd "S-<return>"))
+                      #'ai-code-backends-infra--terminal-send-multiline-input)))
+      (when (buffer-live-p configured)
+        (kill-buffer configured))
+      (when (buffer-live-p unconfigured)
+        (kill-buffer unconfigured)))))
+
 (ert-deftest test-ai-code-backends-infra-toggle-or-create-session-calls-post-start-hook ()
   "POST-START-FN should receive the created buffer, process, and instance."
   (let* ((working-dir "/tmp/ai-code-post-start/")

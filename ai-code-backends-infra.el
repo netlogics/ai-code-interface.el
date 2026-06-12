@@ -492,15 +492,27 @@ Constructs function name as `ai-code-backends-infra-<backend>-<operation>'."
   (ai-code-backends-infra--terminal-send-string
    ai-code-backends-infra--multiline-input-sequence))
 
+(defun ai-code-backends-infra--ensure-buffer-local-keymap ()
+  "Use a buffer-local copy of the current local keymap."
+  (use-local-map (copy-keymap (or (current-local-map)
+                                  (make-sparse-keymap))))
+  (current-local-map))
+
 (defun ai-code-backends-infra--configure-multiline-input (sequence)
   "Configure multiline input keybindings in the current session buffer.
 SEQUENCE is the terminal sequence sent for `S-<return>' and `C-<return>'."
-  (when sequence
-    (setq-local ai-code-backends-infra--multiline-input-sequence sequence)
-    (local-set-key (kbd "S-<return>")
-                   #'ai-code-backends-infra--terminal-send-multiline-input)
-    (local-set-key (kbd "C-<return>")
-                   #'ai-code-backends-infra--terminal-send-multiline-input)))
+  (if sequence
+      (progn
+        (setq-local ai-code-backends-infra--multiline-input-sequence sequence)
+        (define-key (current-local-map) (kbd "S-<return>")
+                    #'ai-code-backends-infra--terminal-send-multiline-input)
+        (define-key (current-local-map) (kbd "C-<return>")
+                    #'ai-code-backends-infra--terminal-send-multiline-input))
+    (setq-local ai-code-backends-infra--multiline-input-sequence nil)
+    (dolist (key (list (kbd "S-<return>") (kbd "C-<return>")))
+      (when (eq (lookup-key (current-local-map) key)
+                #'ai-code-backends-infra--terminal-send-multiline-input)
+        (define-key (current-local-map) key nil)))))
 
 (defun ai-code-backends-infra--configure-session-buffer (buffer
                                                          &optional escape-fn
@@ -509,8 +521,9 @@ SEQUENCE is the terminal sequence sent for `S-<return>' and `C-<return>'."
 ESCAPE-FN is bound to `C-<escape>' when non-nil.
 MULTILINE-INPUT-SEQUENCE configures `S-<return>' and `C-<return>' when non-nil."
   (with-current-buffer buffer
+    (ai-code-backends-infra--ensure-buffer-local-keymap)
     (when escape-fn
-      (local-set-key (kbd "C-<escape>") escape-fn))
+      (define-key (current-local-map) (kbd "C-<escape>") escape-fn))
     (ai-code-backends-infra--configure-multiline-input
      multiline-input-sequence)
     (ai-code-session-link--linkify-session-region (point-min) (point-max))))
