@@ -98,6 +98,13 @@ interval prevents flooding the scrollback with duplicate frames."
   :type 'number
   :group 'ai-code-backends-infra)
 
+(defcustom ai-code-backends-infra-use-paste-backends '("antigravity")
+  "List of backend session prefixes for which multiline inputs should be pasted.
+This helps speed up sending multiline prompts to backends (like Antigravity)
+that process character-by-character input slowly."
+  :type '(repeat string)
+  :group 'ai-code-backends-infra)
+
 ;;; Variables
 
 (defvar ai-code-backends-infra--processes (make-hash-table :test 'equal)
@@ -468,9 +475,12 @@ Constructs function name as `ai-code-backends-infra-<backend>-<operation>'."
   "Install buffer-local hooks for cursor handoff in terminal navigation modes."
   (ai-code-backends-infra--terminal-dispatch "install-navigation-cursor-sync"))
 
-(defun ai-code-backends-infra--terminal-send-string (string)
-  "Send STRING to the terminal in the current buffer."
-  (ai-code-backends-infra--terminal-dispatch "send-string" string))
+(defun ai-code-backends-infra--terminal-send-string (string &optional paste)
+  "Send STRING to the terminal in the current buffer.
+If PASTE is non-nil, send it as a pasted string."
+  (if paste
+      (ai-code-backends-infra--terminal-dispatch "send-string" string paste)
+    (ai-code-backends-infra--terminal-dispatch "send-string" string)))
 
 (defun ai-code-backends-infra--terminal-send-escape ()
   "Send escape key to the terminal in the current buffer."
@@ -1448,7 +1458,11 @@ When PREFIX and WORKING-DIR are provided, select from multiple sessions."
                   source-buffer)))
     (with-current-buffer buffer
       (ai-code-backends-infra--remember-session-buffer prefix working-dir buffer)
-      (ai-code-backends-infra--terminal-send-string line)
+      (if (and (string-match-p "\n" line)
+               (member ai-code-backends-infra--session-prefix
+                       ai-code-backends-infra-use-paste-backends))
+          (ai-code-backends-infra--terminal-send-string line t)
+        (ai-code-backends-infra--terminal-send-string line))
       (sit-for 0.5) ;; 0.1 might be too low for some cli backends such as github copilot cli
       (ai-code-backends-infra--terminal-send-return))))
 

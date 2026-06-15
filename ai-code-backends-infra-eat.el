@@ -33,6 +33,7 @@ a more stable viewing experience when working with multiple windows."
 (declare-function ai-code-backends-infra--sync-terminal-cursor
                   "ai-code-backends-infra" ())
 (declare-function eat-term-send-string "eat" (&rest args))
+(declare-function eat-term-send-string-as-yank "eat" (&rest args))
 (declare-function eat--adjust-process-window-size "eat" (&rest args))
 (declare-function eat-mode "eat" ())
 (declare-function eat-exec "eat" (&rest args))
@@ -61,10 +62,13 @@ a more stable viewing experience when working with multiple windows."
   (add-hook 'post-command-hook
             #'ai-code-backends-infra--sync-terminal-cursor nil t))
 
-(defun ai-code-backends-infra-eat-send-string (string)
-  "Send STRING to the current Eat terminal."
+(defun ai-code-backends-infra-eat-send-string (string &optional paste)
+  "Send STRING to the current Eat terminal.
+If PASTE is non-nil, send it as a pasted string."
   (when (bound-and-true-p eat-terminal)
-    (eat-term-send-string eat-terminal string)))
+    (if (and paste (fboundp 'eat-term-send-string-as-yank))
+        (eat-term-send-string-as-yank eat-terminal string)
+      (eat-term-send-string eat-terminal string))))
 
 (defun ai-code-backends-infra-eat-send-escape ()
   "Send escape to the current Eat terminal."

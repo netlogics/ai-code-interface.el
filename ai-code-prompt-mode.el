@@ -30,6 +30,9 @@ This is set by `ai-code-backends-infra.el' for terminal-managed sessions
 such as `vterm' and `eat'.  A nil value means the buffer is not managed by
 the terminal backend infrastructure.")
 
+(defvar ai-code-backends-infra-use-paste-backends)
+(defvar ai-code-backends-infra--session-prefix)
+
 (declare-function yas-load-directory "yasnippet" (dir))
 (declare-function yas-minor-mode "yasnippet")
 (declare-function ai-code-cli-send-command "ai-code-backends" (command))
@@ -237,7 +240,12 @@ Return a session buffer, or nil for default backend dispatch."
 (defun ai-code--send-prompt-to-session-buffer (prompt buffer)
   "Send PROMPT directly to session BUFFER and display it."
   (with-current-buffer buffer
-    (ai-code-backends-infra--terminal-send-string prompt)
+    (if (and (string-match-p "\n" prompt)
+             (bound-and-true-p ai-code-backends-infra-use-paste-backends)
+             (member ai-code-backends-infra--session-prefix
+                     ai-code-backends-infra-use-paste-backends))
+        (ai-code-backends-infra--terminal-send-string prompt t)
+      (ai-code-backends-infra--terminal-send-string prompt))
     (sit-for 0.5)
     (ai-code-backends-infra--terminal-send-return))
   (if-let ((window (get-buffer-window buffer)))

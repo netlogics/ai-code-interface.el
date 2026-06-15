@@ -85,9 +85,12 @@ updates are handled separately via carriage return counting.")
   (add-hook 'vterm-copy-mode-hook
             #'ai-code-backends-infra--sync-terminal-cursor nil t))
 
-(defun ai-code-backends-infra-vterm-send-string (string)
-  "Send STRING to the current vterm buffer."
-  (vterm-send-string string))
+(defun ai-code-backends-infra-vterm-send-string (string &optional paste)
+  "Send STRING to the current vterm buffer.
+If PASTE is non-nil, send it as a pasted string."
+  (if paste
+      (vterm-send-string string paste)
+    (vterm-send-string string)))
 
 (defun ai-code-backends-infra-vterm-send-escape ()
   "Send escape to the current vterm buffer."

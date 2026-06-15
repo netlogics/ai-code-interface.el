@@ -909,6 +909,33 @@ The result is a cons of whether SYMBOL is bound and its default value."
       (when (buffer-live-p buffer)
         (kill-buffer buffer)))))
 
+(ert-deftest test-ai-code-backends-infra-send-line-use-paste-backends ()
+  "Verify that multiline lines are pasted only for configured backends."
+  (let ((calls nil)
+        (buffer (generate-new-buffer " *ai-code-terminal-paste-test*")))
+    (unwind-protect
+        (cl-letf (((symbol-function 'ai-code-backends-infra-vterm-send-string)
+                   (lambda (string &optional paste)
+                     (push (list string paste) calls)))
+                  ((symbol-function 'ai-code-backends-infra--terminal-send-return)
+                   (lambda () nil))
+                  ((symbol-function 'sit-for)
+                   (lambda (&rest _args) nil)))
+          ;; Case 1: Prefix is "antigravity" (configured) -> should paste
+          (with-current-buffer buffer
+            (setq-local ai-code-backends-infra--session-terminal-backend 'vterm)
+            (setq-local ai-code-backends-infra--session-prefix "antigravity")
+            (ai-code-backends-infra--send-line-to-session " *ai-code-terminal-paste-test*" "no-session" "line1\nline2"))
+          (should (equal (car calls) '("line1\nline2" t)))
+          (setq calls nil)
+          ;; Case 2: Prefix is "claude" (not configured) -> should not paste
+          (with-current-buffer buffer
+            (setq-local ai-code-backends-infra--session-prefix "claude"))
+          (ai-code-backends-infra--send-line-to-session " *ai-code-terminal-paste-test*" "no-session" "line1\nline2")
+          (should (equal (car calls) '("line1\nline2" nil))))
+      (when (buffer-live-p buffer)
+        (kill-buffer buffer)))))
+
 (ert-deftest test-ai-code-backends-infra-terminal-send-string-ghostel-uses-public-api ()
   "Ghostel sessions should send input through `ghostel-send-string'."
   (let ((calls nil))
