@@ -54,7 +54,7 @@
   (add-hook 'post-command-hook
             #'ai-code-backends-infra--sync-terminal-cursor nil t))
 
-(defun ai-code-backends-infra-ghostel-send-string (string)
+(defun ai-code-backends-infra-ghostel-send-string (string &optional _paste)
   "Send STRING to the current Ghostel process."
   (ghostel-send-string string))
 
