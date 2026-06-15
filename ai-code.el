@@ -1,4 +1,4 @@
-;;; ai-code.el --- Unified interface for AI coding backends such as Codex CLI, Claude Code, Antigravity CLI, Opencode, Copilot CLI, Kilo, Grok CLI, etc -*- lexical-binding: t; -*-
+;;; ai-code.el --- Unified interface for AI coding backends such as Codex CLI, Antigravity CLI, Claude Code, Opencode, etc -*- lexical-binding: t; -*-
 
 ;; Author: Kang Tu <tninja@gmail.com>
 ;; Assisted-by:
