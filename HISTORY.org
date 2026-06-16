@@ -2,6 +2,8 @@
 * Release history
 
 ** Main branch change
+- Fix: Resolve active session lookup issue for later opened files
+- Feat: externalize follow-up prompt and support cycle options in Transient menu
 - Fix: improve antigravity cli backend prompt sending speed.
 - Chore: Add context levels to Emacs runtime debug prompts
 - Fix: keep terminal multiline bindings buffer-local, by Silex
