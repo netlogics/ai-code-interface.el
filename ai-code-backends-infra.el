@@ -625,11 +625,13 @@ buffer is in scroll/copy mode, working around bug #1422."
                         (side . ,side)
                         (slot . 0)
                         ,@(when (memq side '(left right))
-                            `((window-width
-                               . ,#'ai-code-backends-infra--fit-side-window-body-width)))
+                            `((window-width . ,#'ai-code-backends-infra--fit-side-window-body-width)
+                              (preserve-size . (t . nil))))
                         ,@(when (memq side '(top bottom))
-                            `((window-height . ,ai-code-backends-infra-window-height)))
-                        (window-parameters . ((no-delete-other-windows . t)))))))
+                            `((window-height . ,ai-code-backends-infra-window-height)
+                              (preserve-size . (nil . t))))
+                        (window-parameters . ((no-delete-other-windows . t)
+                                              (window-size-fixed . ,(if (memq side '(left right)) 'width 'height))))))))
                (display-buffer buffer))
            (display-buffer buffer))))
     (setq ai-code-backends-infra--last-accessed-buffer buffer)
@@ -647,7 +649,7 @@ buffer is in scroll/copy mode, working around bug #1422."
   (let ((delta (- ai-code-backends-infra-window-width
                   (window-body-width window))))
     (unless (zerop delta)
-      (window-resize window delta t))))
+      (window-resize window delta t t))))
 
 (defun ai-code-backends-infra--sync-terminal-dimensions (buffer window)
   "Sync terminal dimensions in BUFFER to match WINDOW size.
