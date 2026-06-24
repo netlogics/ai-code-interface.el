@@ -2,6 +2,7 @@
 * Release history
 
 ** Main branch change
+- Feat: improve gptel sync request timeout, truncation, and retry
 
 ** 1.86
 - Fix C-c C-c override in org task files
