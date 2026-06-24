@@ -1087,7 +1087,7 @@ evaluates BODY, and ensures everything is cleaned up afterward."
         (with-current-buffer session-buf
           (setq-local ai-code-backends-infra--session-terminal-backend 'vterm)
           (cl-letf (((symbol-function 'window-list)
-                     (lambda (&optional _frame _no-minibuf)
+                     (lambda (&rest _args)
                        '(win1 win2)))
                     ((symbol-function 'window-buffer)
                      (lambda (win)
@@ -1098,7 +1098,7 @@ evaluates BODY, and ensures everything is cleaned up afterward."
 (ert-deftest ai-code-test-find-visible-session-buffer-nil-when-no-sessions ()
   "Return nil when no session buffers are visible."
   (cl-letf (((symbol-function 'window-list)
-             (lambda (&optional _frame _no-minibuf) '(win1)))
+             (lambda (&rest _args) '(win1)))
             ((symbol-function 'window-buffer)
              (lambda (_win) (get-buffer "*scratch*"))))
     (should-not (ai-code--find-visible-session-buffer))))
@@ -1108,7 +1108,7 @@ evaluates BODY, and ensures everything is cleaned up afterward."
   (let ((session-buf (get-buffer-create "*claude[test-project]*")))
     (unwind-protect
         (cl-letf (((symbol-function 'window-list)
-                   (lambda (&optional _frame _no-minibuf) '(win1)))
+                   (lambda (&rest _args) '(win1)))
                   ((symbol-function 'window-buffer)
                    (lambda (_win) session-buf)))
           (should-not (ai-code--find-visible-session-buffer)))
