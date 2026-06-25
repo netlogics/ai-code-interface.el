@@ -405,6 +405,49 @@
     (should spec)
     (should-not (plist-get (cdr spec) :install-skills))))
 
+(ert-deftest ai-code-test-select-backend-mru-ordering ()
+  "Test that backend selection ordering follows the MRU list loaded from the history file, and updates it upon selection."
+  (let* ((temp-file (make-temp-file "ai-code-backends-history-"))
+         (ai-code-backends-history-file temp-file)
+         (ai-code-backends '((backend-a :label "Backend A" :start ignore :switch ignore :send ignore)
+                              (backend-b :label "Backend B" :start ignore :switch ignore :send ignore)
+                              (backend-c :label "Backend C" :start ignore :switch ignore :send ignore)))
+         (ai-code-selected-backend 'backend-a)
+         (captured-candidates nil)
+         (selected-choice "Backend B"))
+    (unwind-protect
+        (progn
+          ;; Write initial history: backend-c was used recently, backend-b before that
+          (with-temp-file temp-file
+            (insert (prin1-to-string '(backend-c backend-b))))
+          
+          ;; Spy completing-read to capture the candidates offered to the user
+          (cl-letf (((symbol-function 'completing-read)
+                     (lambda (_prompt candidates &rest _args)
+                       (setq captured-candidates candidates)
+                       selected-choice))
+                    ((symbol-function 'ai-code-onboarding-show-backend-switch-hint) #'ignore)
+                    ((symbol-function 'message) #'ignore))
+            (ai-code-select-backend)
+            
+            ;; 1. The selected backend should be switched to backend-b
+            (should (eq ai-code-selected-backend 'backend-b))
+            
+            ;; 2. The candidates list passed to completing-read should have:
+            ;;   - First: Current effective backend (backend-a)
+            ;;   - Then: history items in order (backend-c, backend-b) excluding current
+            ;; So candidates should be '("Backend A" "Backend C" "Backend B")
+            (should (equal captured-candidates '("Backend A" "Backend C" "Backend B")))
+            
+            ;; 3. The history file should have been updated after selection:
+            ;; New selection B is now at the top, C is next
+            (let ((new-history (with-temp-buffer
+                                 (insert-file-contents temp-file)
+                                 (read (buffer-string)))))
+              (should (equal new-history '(backend-b backend-c))))))
+      (when (file-exists-p temp-file)
+        (delete-file temp-file)))))
+
 (provide 'test_ai-code-backends)
 
 ;;; test_ai-code-backends.el ends here
