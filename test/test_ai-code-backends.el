@@ -448,6 +448,59 @@
       (when (file-exists-p temp-file)
         (delete-file temp-file)))))
 
+(ert-deftest ai-code-test-backends-corrupted-history-file-deleted ()
+  "Test that if the history file contains invalid Lisp, load-backends-history deletes it and returns nil."
+  (let* ((temp-file (make-temp-file "ai-code-backends-history-"))
+         (ai-code-backends-history-file temp-file))
+    (unwind-protect
+        (progn
+          ;; Write corrupted content
+          (write-region "(invalid-lisp" nil temp-file nil 'silent)
+          (should (file-exists-p temp-file))
+          
+          ;; Load should return nil
+          (should-not (ai-code--load-backends-history))
+          
+          ;; File should have been deleted
+          (should-not (file-exists-p temp-file)))
+      (when (file-exists-p temp-file)
+        (delete-file temp-file)))))
+
+(ert-deftest ai-code-test-select-backend-partial-history-keeps-all-backends ()
+  "Test that even if the history file only covers some backends or contains invalid keys, all backends are still available as choices."
+  (let* ((temp-file (make-temp-file "ai-code-backends-history-"))
+         (ai-code-backends-history-file temp-file)
+         (ai-code-backends '((backend-a :label "Backend A" :start ignore :switch ignore :send ignore)
+                              (backend-b :label "Backend B" :start ignore :switch ignore :send ignore)
+                              (backend-c :label "Backend C" :start ignore :switch ignore :send ignore)))
+         (ai-code-selected-backend 'backend-a)
+         (captured-candidates nil)
+         (selected-choice "Backend C"))
+    (unwind-protect
+        (progn
+          ;; Write partial/invalid history: only backend-b and some invalid key
+          (with-temp-file temp-file
+            (insert (prin1-to-string '(backend-b invalid-backend-key))))
+          
+          (cl-letf (((symbol-function 'completing-read)
+                     (lambda (_prompt candidates &rest _args)
+                       (setq captured-candidates candidates)
+                       selected-choice))
+                    ((symbol-function 'ai-code-onboarding-show-backend-switch-hint) #'ignore)
+                    ((symbol-function 'message) #'ignore))
+            (ai-code-select-backend)
+            
+            ;; 1. The selection should complete successfully
+            (should (eq ai-code-selected-backend 'backend-c))
+            ;; 2. Candidates list must still include all three backends:
+            ;;   - First: Current effective backend (backend-a)
+            ;;   - Then: history items that are valid (backend-b)
+            ;;   - Last: other remaining backends (backend-c)
+            ;; So candidates should be '("Backend A" "Backend B" "Backend C")
+            (should (equal captured-candidates '("Backend A" "Backend B" "Backend C")))))
+      (when (file-exists-p temp-file)
+        (delete-file temp-file)))))
+
 (provide 'test_ai-code-backends)
 
 ;;; test_ai-code-backends.el ends here

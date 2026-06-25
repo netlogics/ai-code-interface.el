@@ -436,7 +436,9 @@ configuration paths, upgrade commands, and skill-install commands."
             (let ((content (buffer-string)))
               (unless (string-empty-p content)
                 (read content))))
-        (error nil))
+        (error
+         (ignore-errors (delete-file ai-code-backends-history-file))
+         nil))
     nil))
 
 (defun ai-code--save-backend-history (backend)
