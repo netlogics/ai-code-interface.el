@@ -27,6 +27,8 @@
 (defvar ai-code--cli-resume-fn #'ai-code--unsupported-resume)
 (defvar ai-code--cli-switch-fn #'ai-code--unsupported-switch-to-buffer)
 (defvar ai-code--cli-send-fn #'ai-code--unsupported-send-command)
+(defvar ai-code-selected-backend 'claude-code
+  "Currently selected backend key from `ai-code-backends'.")
 
 (defvar ai-code--repo-backend-alist nil
   "Alist of (GIT-ROOT . BACKEND) to keep backend affinity per repository.")
@@ -427,6 +429,18 @@ configuration paths, upgrade commands, and skill-install commands."
   (expand-file-name "ai-code-backends-history.el" user-emacs-directory)
   "File path to store the MRU history of selected backends.")
 
+(defun ai-code--delete-backends-history-file ()
+  "Delete `ai-code-backends-history-file' when it exists."
+  (when (file-exists-p ai-code-backends-history-file)
+    (ignore-errors (delete-file ai-code-backends-history-file))))
+
+(defun ai-code--valid-backends-history-p (history)
+  "Return non-nil when HISTORY is a list of backend symbols."
+  (and (listp history)
+       (seq-every-p (lambda (item)
+                      (and item (symbolp item)))
+                    history)))
+
 (defun ai-code--load-backends-history ()
   "Load the MRU backend history from `ai-code-backends-history-file'."
   (if (file-exists-p ai-code-backends-history-file)
@@ -435,9 +449,13 @@ configuration paths, upgrade commands, and skill-install commands."
             (insert-file-contents ai-code-backends-history-file)
             (let ((content (buffer-string)))
               (unless (string-empty-p content)
-                (read content))))
+                (let ((history (read content)))
+                  (if (ai-code--valid-backends-history-p history)
+                      history
+                    (ai-code--delete-backends-history-file)
+                    nil)))))
         (error
-         (ignore-errors (delete-file ai-code-backends-history-file))
+         (ai-code--delete-backends-history-file)
          nil))
     nil))
 
@@ -451,9 +469,6 @@ configuration paths, upgrade commands, and skill-install commands."
                     (prin1-to-string updated-history))))
       (error nil))))
 
-(defvar ai-code-selected-backend 'claude-code
-  "Currently selected backend key from `ai-code-backends'.")
-
 (defun ai-code-set-backend (new-backend)
   "Set the AI backend to NEW-BACKEND."
   (unless (ai-code--backend-spec new-backend)
@@ -466,6 +481,35 @@ configuration paths, upgrade commands, and skill-install commands."
 (defun ai-code--backend-spec (key)
   "Return backend plist for KEY from `ai-code-backends'."
   (seq-find (lambda (it) (eq (car it) key)) ai-code-backends))
+
+(defun ai-code--ordered-backend-choices ()
+  "Return backend choices with the effective backend first, then MRU entries."
+  (let* ((choices (mapcar (lambda (it)
+                            (let* ((key (car it))
+                                   (label (plist-get (cdr it) :label)))
+                              (cons (format "%s" label) key)))
+                          ai-code-backends))
+         (effective-backend (ai-code--effective-backend))
+         (history (ai-code--load-backends-history))
+         (history-choices (seq-filter #'identity
+                                      (mapcar (lambda (key)
+                                                (seq-find (lambda (candidate)
+                                                            (eq (cdr candidate) key))
+                                                          choices))
+                                              history)))
+         (other-choices (seq-remove (lambda (candidate)
+                                      (member candidate history-choices))
+                                    choices))
+         (sorted-choices (append history-choices other-choices))
+         (current-choice (seq-find (lambda (candidate)
+                                     (eq (cdr candidate) effective-backend))
+                                   sorted-choices)))
+    (if current-choice
+        (cons current-choice
+              (seq-remove (lambda (candidate)
+                            (eq (cdr candidate) effective-backend))
+                          sorted-choices))
+      sorted-choices)))
 
 (defun ai-code-current-backend-label ()
   "Return label string of the currently selected backend.
@@ -542,25 +586,11 @@ invoke `ai-code-cli-resume'; otherwise call `ai-code-cli-start'."
 (defun ai-code-select-backend ()
   "Interactively select and apply an AI backend from `ai-code-backends'."
   (interactive)
-  (let* ((choices (mapcar (lambda (it)
-                            (let* ((key (car it))
-                                   (label (plist-get (cdr it) :label)))
-                              (cons (format "%s" label) key)))
-                          ai-code-backends))
-         (effective-backend (ai-code--effective-backend))
-         (history (ai-code--load-backends-history))
-         (history-choices (seq-filter #'identity
-                                      (mapcar (lambda (key)
-                                                (seq-find (lambda (c) (eq (cdr c) key)) choices))
-                                              history)))
-         (other-choices (seq-remove (lambda (c) (member c history-choices)) choices))
-         (sorted-choices (append history-choices other-choices))
-         (current-choice (seq-find (lambda (it) (eq (cdr it) effective-backend)) sorted-choices))
-         (ordered-choices (if current-choice
-                              (cons current-choice
-                                    (seq-remove (lambda (it) (eq (cdr it) effective-backend))
-                                                sorted-choices))
-                            sorted-choices))
+  (let* ((ordered-choices (ai-code--ordered-backend-choices))
+         (current-choice (car ordered-choices))
+         (completion-extra-properties
+          '(:display-sort-function identity
+            :cycle-sort-function identity))
          (choice (completing-read "Select backend: "
                                   (mapcar #'car ordered-choices)
                                   nil t nil nil (car current-choice)))

@@ -414,6 +414,7 @@
                               (backend-c :label "Backend C" :start ignore :switch ignore :send ignore)))
          (ai-code-selected-backend 'backend-a)
          (captured-candidates nil)
+         (captured-extra-properties nil)
          (selected-choice "Backend B"))
     (unwind-protect
         (progn
@@ -425,6 +426,7 @@
           (cl-letf (((symbol-function 'completing-read)
                      (lambda (_prompt candidates &rest _args)
                        (setq captured-candidates candidates)
+                       (setq captured-extra-properties completion-extra-properties)
                        selected-choice))
                     ((symbol-function 'ai-code-onboarding-show-backend-switch-hint) #'ignore)
                     ((symbol-function 'message) #'ignore))
@@ -438,6 +440,10 @@
             ;;   - Then: history items in order (backend-c, backend-b) excluding current
             ;; So candidates should be '("Backend A" "Backend C" "Backend B")
             (should (equal captured-candidates '("Backend A" "Backend C" "Backend B")))
+            (should (eq (plist-get captured-extra-properties :display-sort-function)
+                        #'identity))
+            (should (eq (plist-get captured-extra-properties :cycle-sort-function)
+                        #'identity))
             
             ;; 3. The history file should have been updated after selection:
             ;; New selection B is now at the top, C is next
@@ -462,6 +468,19 @@
           (should-not (ai-code--load-backends-history))
           
           ;; File should have been deleted
+          (should-not (file-exists-p temp-file)))
+      (when (file-exists-p temp-file)
+        (delete-file temp-file)))))
+
+(ert-deftest ai-code-test-backends-readable-malformed-history-file-deleted ()
+  "Test that readable but malformed history content is discarded."
+  (let* ((temp-file (make-temp-file "ai-code-backends-history-"))
+         (ai-code-backends-history-file temp-file))
+    (unwind-protect
+        (progn
+          (write-region "backend-b" nil temp-file nil 'silent)
+          (should (file-exists-p temp-file))
+          (should-not (ai-code--load-backends-history))
           (should-not (file-exists-p temp-file)))
       (when (file-exists-p temp-file)
         (delete-file temp-file)))))
