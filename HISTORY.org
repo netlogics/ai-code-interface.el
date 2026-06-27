@@ -2,6 +2,7 @@
 * Release history
 
 ** Main branch change
+- Feat: Add C4 PlantUML architecture document derivation
 - Chore: Support optional editor context in GitHub issue investigation
 - Feat: improve gptel sync request timeout, truncation, and retry
 
