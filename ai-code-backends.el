@@ -113,7 +113,9 @@ Argument _ARG is ignored."
 ;;;###autoload
 (defun ai-code-cli-start (&optional arg)
   "Start the current backend's CLI session when supported.
-Argument ARG is passed to the backend's start function."
+Argument ARG is passed to the backend's start function.
+Interactively, a prefix argument keeps the existing CLI-args prompt and
+also prompts for the working directory before the session starts."
   (interactive "P")
   (ai-code--activate-effective-backend)
   (prog1
@@ -131,7 +133,7 @@ Noninteractive callers pass ARG to the backend resume function.
 When called interactively, any prefix argument is forwarded via
 `current-prefix-arg', and it is up to the backend how to interpret
 it (for example, some backends may use a non-nil prefix to prompt for
-additional CLI arguments)."
+additional CLI arguments and a working directory)."
   (interactive "P")
   (ai-code--activate-effective-backend)
   (prog1

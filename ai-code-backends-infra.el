@@ -683,9 +683,16 @@ from the window where it was initially created."
 
 ;;; Session Helpers
 
-(defun ai-code-backends-infra--session-working-directory ()
-  "Return the working directory, preferring the current project root."
-  (ai-code--session-project-root))
+(defun ai-code-backends-infra--session-working-directory (&optional prompt-p)
+  "Return the working directory, preferring the current project root.
+When PROMPT-P is non-nil, prompt with the computed directory as the default."
+  (let ((working-dir (ai-code--session-project-root)))
+    (if prompt-p
+        (read-directory-name "Working directory: "
+                             working-dir
+                             working-dir
+                             t)
+      working-dir)))
 
 (defun ai-code-backends-infra--normalize-session-directory (directory)
   "Return DIRECTORY normalized for robust session matching."
@@ -1221,12 +1228,12 @@ OPTIONS is a plist with these keys:
 :prepare-launch is an optional function called with (WORKING-DIR COMMAND).
 When :prepare-launch is present, it may return :command, :cleanup-fn, and
 :post-start-fn entries to customize session creation."
-  (let* ((working-dir (ai-code-backends-infra--session-working-directory))
-         (resolved (ai-code-backends-infra--resolve-start-command
+  (let* ((resolved (ai-code-backends-infra--resolve-start-command
                     (plist-get options :program)
                     (plist-get options :switches)
                     arg
                     (plist-get options :label)))
+         (working-dir (ai-code-backends-infra--session-working-directory arg))
          (command (plist-get resolved :command))
          (launch (when-let ((prepare-launch (plist-get options :prepare-launch)))
                    (funcall prepare-launch working-dir command)))
@@ -1246,6 +1253,19 @@ When :prepare-launch is present, it may return :command, :cleanup-fn, and
      (plist-get options :env-vars)
      (plist-get options :multiline-input-sequence)
      post-start-fn)))
+
+(defun ai-code-backends-infra--last-accessed-session-buffer (session-prefix)
+  "Return the last accessed buffer when it belongs to SESSION-PREFIX."
+  (let ((buffer ai-code-backends-infra--last-accessed-buffer))
+    (when (and (buffer-live-p buffer)
+               (with-current-buffer buffer
+                 (or (and (stringp ai-code-backends-infra--session-prefix)
+                          (string= ai-code-backends-infra--session-prefix
+                                   session-prefix))
+                     (ai-code-backends-infra--parse-session-buffer-name
+                      (buffer-name buffer)
+                      session-prefix))))
+      buffer)))
 
 (defun ai-code-backends-infra--cli-switch-to-buffer (label session-prefix force-prompt)
   "Switch to a CLI backend session.
@@ -1274,9 +1294,11 @@ the backend session group."
 (defun ai-code-backends-infra--cli-show-resume-picker (session-prefix)
   "Poke the resumed SESSION-PREFIX buffer so the CLI picker is shown."
   (let* ((working-dir (ai-code-backends-infra--session-working-directory))
-         (buffer (ai-code-backends-infra--select-session-buffer
-                  session-prefix
-                  working-dir)))
+         (buffer (or (ai-code-backends-infra--last-accessed-session-buffer
+                      session-prefix)
+                     (ai-code-backends-infra--select-session-buffer
+                      session-prefix
+                      working-dir))))
     (when buffer
       (with-current-buffer buffer
         (sit-for 0.5)
