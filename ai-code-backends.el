@@ -15,8 +15,9 @@
 
 (defvar ai-code-cli)
 (defvar claude-code-terminal-backend)
-(defvar ai-code-selected-backend 'claude-code
-  "Currently selected backend key from `ai-code-backends'.")
+
+(eval-when-compile
+  (defvar ai-code-selected-backend))
 
 (declare-function claude-code--do-send-command "claude-code" (cmd))
 (declare-function claude-code--term-send-string "claude-code" (backend string))
@@ -426,6 +427,9 @@ configuration paths, upgrade commands, and skill-install commands."
                                                        (symbol :tag "Install skills function")
                                                        (const :tag "Not supported" nil))))
   :group 'ai-code)
+
+(defvar ai-code-selected-backend 'claude-code
+  "Currently selected backend key from `ai-code-backends'.")
 
 (defun ai-code-set-backend (new-backend)
   "Set the AI backend to NEW-BACKEND."

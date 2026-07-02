@@ -301,7 +301,7 @@ The result is a cons of whether SYMBOL is bound and its default value."
   (let (switch-args
         send-args)
     (cl-letf (((symbol-function 'ai-code-backends-infra--session-working-directory)
-               (lambda () "/project/"))
+               (lambda (&optional _prompt-p) "/project/"))
               ((symbol-function 'ai-code-backends-infra--switch-to-session-buffer)
                (lambda (&rest args)
                  (setq switch-args args)))
@@ -331,7 +331,7 @@ The result is a cons of whether SYMBOL is bound and its default value."
             (insert "prompt")
             (goto-char (point-max)))
           (cl-letf (((symbol-function 'ai-code-backends-infra--session-working-directory)
-                     (lambda () "/project/"))
+                     (lambda (&optional _prompt-p) "/project/"))
                     ((symbol-function 'ai-code-backends-infra--select-session-buffer)
                      (lambda (&rest _args)
                        (setq select-called t)
@@ -355,7 +355,7 @@ The result is a cons of whether SYMBOL is bound and its default value."
         sent)
     (unwind-protect
         (cl-letf (((symbol-function 'ai-code-backends-infra--session-working-directory)
-                   (lambda () "/project/"))
+                   (lambda (&optional _prompt-p) "/project/"))
                   ((symbol-function 'ai-code-backends-infra--select-session-buffer)
                    (lambda (prefix working-dir)
                      (should (equal prefix "codex"))
