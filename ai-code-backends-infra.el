@@ -1233,7 +1233,9 @@ When :prepare-launch is present, it may return :command, :cleanup-fn, and
                     (plist-get options :switches)
                     arg
                     (plist-get options :label)))
-         (working-dir (ai-code-backends-infra--session-working-directory arg))
+         (working-dir (if arg
+                          (ai-code-backends-infra--session-working-directory arg)
+                        (ai-code-backends-infra--session-working-directory)))
          (command (plist-get resolved :command))
          (launch (when-let ((prepare-launch (plist-get options :prepare-launch)))
                    (funcall prepare-launch working-dir command)))
