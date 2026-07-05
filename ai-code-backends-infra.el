@@ -1216,6 +1216,7 @@ behavior."
 
 (defun ai-code-backends-infra--start-cli-session (options arg)
   "Start a generic CLI session described by OPTIONS and prefix ARG.
+When ARG is non-nil, prompt for CLI args, working directory, and instance name.
 OPTIONS is a plist with these keys:
 :program is the CLI executable.
 :switches is the default list of CLI switches.
@@ -1251,7 +1252,7 @@ When :prepare-launch is present, it may return :command, :cleanup-fn, and
      cleanup-fn
      nil
      (plist-get options :session-prefix)
-     nil
+     arg
      (plist-get options :env-vars)
      (plist-get options :multiline-input-sequence)
      post-start-fn)))

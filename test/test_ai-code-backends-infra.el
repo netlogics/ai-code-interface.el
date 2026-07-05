@@ -244,13 +244,14 @@ The result is a cons of whether SYMBOL is bound and its default value."
                          cleanup-fn
                          nil
                          "codex"
-                         nil
+                         'prefix-arg
                          '("TERM_PROGRAM=vscode")
                          "\r\n"
                          post-start-fn)))))
 
 (ert-deftest test-ai-code-backends-infra-start-cli-session-prompts-dir-after-args ()
-  "Working directory prompting should happen after CLI args prompting."
+  "Working directory prompting should happen after CLI args prompting.
+The prefix argument should also force instance-name prompting."
   (let ((process-table (make-hash-table :test 'equal))
         call-order
         captured)
@@ -293,7 +294,7 @@ The result is a cons of whether SYMBOL is bound and its default value."
       (should-not cleanup-fn)
       (should-not instance-name)
       (should (equal prefix "codex"))
-      (should-not force-prompt)
+      (should (eq force-prompt 'prefix-arg))
       (should-not env-vars)
       (should-not multiline-input-sequence)
       (should-not post-start-fn))))
