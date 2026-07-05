@@ -22,22 +22,22 @@
   "Ghostel AI session configuration should install lifecycle hooks locally."
   (with-temp-buffer
     (setq-local ai-code-backends-infra--session-terminal-backend 'ghostel)
-    (let ((ghostel-command-start-functions nil)
-          (ghostel-command-finish-functions nil)
-          (ghostel-progress-function #'ignore))
-      (cl-letf (((symbol-function 'ai-code-backends-infra--configure-session-input-shortcuts)
-                 (lambda () nil))
-                ((symbol-function 'ai-code-backends-infra--install-navigation-cursor-sync)
-                 (lambda () nil)))
-        (ai-code-backends-infra--configure-ghostel-buffer))
-      (should (memq #'ai-code-backends-infra-ghostel--command-start
-                    ghostel-command-start-functions))
-      (should (memq #'ai-code-backends-infra-ghostel--command-finish
-                    ghostel-command-finish-functions))
-      (should (eq ghostel-progress-function
-                  #'ai-code-backends-infra-ghostel--progress))
-      (should (eq ai-code-backends-infra-ghostel--progress-function
-                  #'ignore)))))
+    (setq-local ghostel-command-start-functions nil)
+    (setq-local ghostel-command-finish-functions nil)
+    (setq-local ghostel-progress-function #'ignore)
+    (cl-letf (((symbol-function 'ai-code-backends-infra--configure-session-input-shortcuts)
+               (lambda () nil))
+              ((symbol-function 'ai-code-backends-infra--install-navigation-cursor-sync)
+               (lambda () nil)))
+      (ai-code-backends-infra--configure-ghostel-buffer))
+    (should (memq #'ai-code-backends-infra-ghostel--command-start
+                  ghostel-command-start-functions))
+    (should (memq #'ai-code-backends-infra-ghostel--command-finish
+                  ghostel-command-finish-functions))
+    (should (eq ghostel-progress-function
+                #'ai-code-backends-infra-ghostel--progress))
+    (should (eq ai-code-backends-infra-ghostel--progress-function
+                #'ignore))))
 
 (ert-deftest test-ai-code-backends-infra-ghostel-command-lifecycle-updates-session-metadata ()
   "OSC 133 command hooks should write structured session metadata."
