@@ -663,10 +663,9 @@ from the window where it was initially created."
               (windows (or (get-buffer-window-list buffer nil t)
                            (list window))))
           (if (eq backend 'ghostel)
-              (when-let ((size (funcall (ai-code-backends-infra-ghostel-resize-handler)
-                                        proc
-                                        windows)))
-                (set-process-window-size proc (cdr size) (car size)))
+              (set-process-window-size proc
+                                       (window-body-height window)
+                                       (window-body-width window))
             (pcase backend
               ('vterm
                (let ((result

@@ -31,8 +31,6 @@
 (declare-function ghostel-send-key "ghostel" (key-name &optional mods))
 (declare-function ghostel-send-string "ghostel" (string))
 (declare-function ghostel-paste-string "ghostel" (string))
-(declare-function ghostel--window-adjust-process-window-size
-                  "ghostel" (process windows))
 
 (defvar ai-code-backends-infra--session-terminal-backend)
 (eval-when-compile
@@ -160,8 +158,9 @@ If PASTE is non-nil, send it as a pasted string."
   (ghostel-send-key "backspace"))
 
 (defun ai-code-backends-infra-ghostel-resize-handler ()
-  "Return the Ghostel resize handler."
-  #'ghostel--window-adjust-process-window-size)
+  "Return the Ghostel resize handler.
+Ghostel owns terminal-model resizing through its mode-local window hooks."
+  nil)
 
 (defun ai-code-backends-infra--configure-ghostel-buffer ()
   "Configure the current Ghostel buffer for AI Code sessions."

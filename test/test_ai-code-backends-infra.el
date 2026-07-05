@@ -14,8 +14,6 @@
 (require 'ai-code-backends-infra)
 (require 'ai-code-notifications)
 
-(declare-function ghostel--window-adjust-process-window-size "ghostel" (process windows))
-
 (defvar vterm-copy-mode-hook)
 (defvar eat-term-name)
 (defvar ghostel-set-title-function)
@@ -478,18 +476,17 @@ The result is a cons of whether SYMBOL is bound and its default value."
           (advice-remove handler #'ai-code-backends-infra--terminal-reflow-filter))
         (fmakunbound handler)))))
 
-(ert-deftest test-ai-code-backends-infra-sync-terminal-dimensions-uses-ghostel-handler ()
-  "Ghostel dimension sync should update Ghostel's terminal model before PTY size."
-  (let ((adjust-calls nil)
-        (set-size-calls nil))
+(ert-deftest test-ai-code-backends-infra-sync-terminal-dimensions-ghostel-uses-generic-pty-resize ()
+  "Ghostel dimension sync should not call removed Ghostel private handlers."
+  (let ((set-size-calls nil))
     (cl-letf (((symbol-function 'get-buffer-process)
                (lambda (_buffer) 'ghostel-proc))
               ((symbol-function 'window-live-p)
                (lambda (_window) t))
-              ((symbol-function 'ghostel--window-adjust-process-window-size)
-               (lambda (process windows)
-                 (push (list process windows) adjust-calls)
-                 '(90 . 24)))
+              ((symbol-function 'window-body-height)
+               (lambda (_window) 24))
+              ((symbol-function 'window-body-width)
+               (lambda (_window) 90))
               ((symbol-function 'set-process-window-size)
                (lambda (process height width)
                  (push (list process height width) set-size-calls))))
@@ -498,7 +495,6 @@ The result is a cons of whether SYMBOL is bound and its default value."
         (ai-code-backends-infra--sync-terminal-dimensions
          (current-buffer)
          'mock-window)))
-    (should (equal adjust-calls '((ghostel-proc (mock-window)))))
     (should (equal set-size-calls '((ghostel-proc 24 90))))))
 
 (ert-deftest test-ai-code-backends-infra-display-buffer-in-side-window-uses-body-width ()
@@ -991,11 +987,10 @@ The result is a cons of whether SYMBOL is bound and its default value."
                (lambda () t)))
       (should (ai-code-backends-infra--terminal-navigation-mode-p)))))
 
-(ert-deftest test-ai-code-backends-infra-terminal-resize-handler-supports-ghostel ()
-  "Ghostel backend should expose its resize handler."
+(ert-deftest test-ai-code-backends-infra-terminal-resize-handler-skips-ghostel ()
+  "Ghostel backend should not expose removed private resize handlers."
   (let ((ai-code-backends-infra-terminal-backend 'ghostel))
-    (should (eq (ai-code-backends-infra--terminal-resize-handler)
-                #'ghostel--window-adjust-process-window-size))))
+    (should-not (ai-code-backends-infra--terminal-resize-handler))))
 
 (ert-deftest test-ai-code-backends-infra-terminal-resize-handler-delegates-to-eat-module ()
   "Resize handler lookup should delegate eat specifics to the eat module."
