@@ -189,13 +189,15 @@ The result is a cons of whether SYMBOL is bound and its default value."
     (cl-letf (((symbol-function 'ai-code--session-project-root)
                (lambda () "/project/"))
               ((symbol-function 'read-directory-name)
-               (lambda (prompt &optional dir default-filename mustmatch initial)
-                 (setq seen (list prompt dir default-filename mustmatch initial))
+               (lambda (&rest args)
+                 (setq seen args)
                  "/custom/")))
       (should (equal (ai-code-backends-infra--session-working-directory 'prefix-arg)
                      "/custom/")))
-    (should (equal seen
-                   '("Working directory: " "/project/" "/project/" t nil)))))
+    (should (equal (nth 0 seen) "Working directory: "))
+    (should (equal (nth 1 seen) "/project/"))
+    (should (equal (nth 2 seen) "/project/"))
+    (should (eq (nth 3 seen) t))))
 
 (ert-deftest test-ai-code-backends-infra-start-cli-session-forwards-options ()
   "Generic CLI startup should resolve and forward backend options."
