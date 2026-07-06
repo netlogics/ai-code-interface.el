@@ -226,7 +226,7 @@
                (lambda () 42))
               ((symbol-function 'buffer-substring-no-properties)
                (lambda (_beg _end)
-                 (format "%s" "(define-key test-map (kbd \"C-c x\") #'broken-command)")))
+                 (concat "(define-key test-map (kbd \"C-c x\") #'broken-command)")))
               ((symbol-function 'ai-code--get-region-location-info)
                (lambda (_beg _end)
                  "ai-code.el#L10-L11"))
@@ -379,8 +379,8 @@
 
 (ert-deftest ai-code-test-menu-other-tools-removes-session-checkpoint-entry ()
   "Test that the Other Tools menu no longer exposes a dedicated checkpoint item."
-  (should-error (transient-get-suffix 'ai-code--menu-other-tools "P")
-               :type 'error))
+  (should-not (ignore-errors
+                (transient-get-suffix 'ai-code--menu-other-tools "P"))))
 
 (ert-deftest ai-code-test-menu-agile-development-includes-agent-handoff-entry ()
   "Test that the agile menu exposes agent handoff."
