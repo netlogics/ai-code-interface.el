@@ -266,7 +266,9 @@ ARG is the prefix argument."
 ;;;###autoload
 (defun ai-code-cli-resume-with-session-checkpoint (&optional arg prompt-for-checkpoint)
   "Resume the current backend's CLI session and optionally request a checkpoint.
-Argument ARG is passed to `ai-code-cli-resume'.
+Argument ARG is passed to `ai-code-cli-resume'; with a prefix argument
+\\[universal-argument], it is non-nil and preserves the backend's
+interactive resume behavior.
 PROMPT-FOR-CHECKPOINT is non-nil for interactive calls that should ask
 whether to print a checkpoint after resuming."
   (interactive (list current-prefix-arg t))
