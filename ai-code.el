@@ -263,6 +263,22 @@ ARG is the prefix argument."
                                    ai-code-session-checkpoint-prompt)))
     (ai-code--insert-prompt prompt)))
 
+;;;###autoload
+(defun ai-code-cli-resume-with-session-checkpoint (&optional arg)
+  "Resume the current backend's CLI session and optionally request a checkpoint.
+Argument ARG is passed to `ai-code-cli-resume'."
+  (interactive "P")
+  (let ((interactive-p (or (called-interactively-p 'interactive)
+                           (called-interactively-p 'any))))
+    (if interactive-p
+      (call-interactively #'ai-code-cli-resume)
+    (if arg
+        (ai-code-cli-resume arg)
+      (ai-code-cli-resume)))
+    (when (and interactive-p
+               (y-or-n-p "Print AI session checkpoint? "))
+      (ai-code-session-checkpoint))))
+
 (defun ai-code--emacs-runtime-debug-prompt (description eval-available-p
                                                        &optional region-text
                                                        region-location-info
@@ -498,7 +514,7 @@ Shows the current backend label to the right."
 ;; Mirror aider.el's reusable-section approach using `transient-define-group`.
 (transient-define-group ai-code--menu-ai-cli-session
   ("a" "Start AI CLI (C-u: args)" ai-code-cli-start)
-  ("R" "Resume AI CLI (C-u: args)" ai-code-cli-resume)
+  ("R" "Resume AI CLI (C-u: args)" ai-code-cli-resume-with-session-checkpoint)
   ("z" "Switch to AI CLI (C-u: hide)" ai-code-cli-switch-to-buffer-or-hide)
   ("s" ai-code-select-backend :description ai-code--select-backend-description)
   ("j" "Session dashboard" ai-code-session-dashboard)
@@ -538,7 +554,6 @@ Shows the current backend label to the right."
 (transient-define-group ai-code--menu-other-tools
   (ai-code--infix-toggle-auto-follow-up)
   ("." "Init projectile and gtags" ai-code-init-project)
-  ("P" "AI session checkpoint" ai-code-session-checkpoint)
   ("e" "Investigate exception (C-u: clipboard)" ai-code-investigate-exception)
   ("f" "Fix Flycheck errors in scope" ai-code-flycheck-fix-errors-in-scope)
   ("k" "Copy Cur File Name (C-u: full)" ai-code-copy-buffer-file-name-to-clipboard)
