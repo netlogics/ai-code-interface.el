@@ -268,13 +268,10 @@ ARG is the prefix argument."
   "Resume the current backend's CLI session and optionally request a checkpoint.
 Argument ARG is passed to `ai-code-cli-resume'."
   (interactive "P")
-  (let ((interactive-p (or (called-interactively-p 'interactive)
-                           (called-interactively-p 'any))))
+  (let ((interactive-p (called-interactively-p 'any)))
     (if interactive-p
-      (call-interactively #'ai-code-cli-resume)
-    (if arg
-        (ai-code-cli-resume arg)
-      (ai-code-cli-resume)))
+        (call-interactively #'ai-code-cli-resume)
+      (ai-code-cli-resume arg))
     (when (and interactive-p
                (y-or-n-p "Print AI session checkpoint? "))
       (ai-code-session-checkpoint))))
