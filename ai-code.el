@@ -264,17 +264,14 @@ ARG is the prefix argument."
     (ai-code--insert-prompt prompt)))
 
 ;;;###autoload
-(defun ai-code-cli-resume-with-session-checkpoint (&optional arg)
+(defun ai-code-cli-resume-with-session-checkpoint (&optional arg prompt-for-checkpoint)
   "Resume the current backend's CLI session and optionally request a checkpoint.
 Argument ARG is passed to `ai-code-cli-resume'."
-  (interactive "P")
-  (let ((interactive-p (called-interactively-p 'any)))
-    (if interactive-p
-        (call-interactively #'ai-code-cli-resume)
-      (ai-code-cli-resume arg))
-    (when (and interactive-p
-               (y-or-n-p "Print AI session checkpoint? "))
-      (ai-code-session-checkpoint))))
+  (interactive (list current-prefix-arg t))
+  (ai-code-cli-resume arg)
+  (when (and prompt-for-checkpoint
+             (y-or-n-p "Print AI session checkpoint? "))
+    (ai-code-session-checkpoint)))
 
 (defun ai-code--emacs-runtime-debug-prompt (description eval-available-p
                                                        &optional region-text
