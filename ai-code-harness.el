@@ -61,7 +61,7 @@
 (defun ai-code--auto-test-harness-prompt-path (file-path)
   "Return FILE-PATH formatted for prompt usage.
 When FILE-PATH is inside the current git repository, return a repo-relative
-path.  Otherwise return the absolute FILE-PATH."
+path; otherwise return the absolute FILE-PATH."
   (if-let ((git-root (ai-code--git-root)))
       (let ((git-root-truename (file-name-as-directory (file-truename git-root)))
             (file-truename (file-truename file-path)))
@@ -456,7 +456,7 @@ Send-time routing uses this result for test and discussion follow-up suffixes."
   value)
 
 (defun ai-code--cycle-discussion-auto-follow-up-value (current-val)
-  "Return the next cycled discussion follow-up setting for CURRENT-VAL."
+  "Return the next cycled auto-follow-up-enabled setting for CURRENT-VAL."
   (pcase current-val
     ('nil 'ask-me)
     ((or 't 'ask-me) 'always)
