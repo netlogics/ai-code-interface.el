@@ -37,7 +37,7 @@
 
 ;;;###autoload
 (defcustom ai-code-test-after-code-change-suffix
-  "If any program code changes, run unit-tests and follow up on the test-result (fix code if there is an error)."
+  "If any program code changes, run unit-tests and follow up on the test-result (fix code if there is an error). If the tests use random values (for example random numbers or UUIDs), make them reproducible by fixing the random seed or replacing them with deterministic fixtures."
   "User-provided prompt suffix for test-after-code-change."
   :type '(choice (const nil) string)
   :group 'ai-code)
@@ -61,7 +61,7 @@
 (defun ai-code--auto-test-harness-prompt-path (file-path)
   "Return FILE-PATH formatted for prompt usage.
 When FILE-PATH is inside the current git repository, return a repo-relative
-path. Otherwise return the absolute FILE-PATH."
+path.  Otherwise return the absolute FILE-PATH."
   (if-let ((git-root (ai-code--git-root)))
       (let ((git-root-truename (file-name-as-directory (file-truename git-root)))
             (file-truename (file-truename file-path)))
@@ -197,6 +197,10 @@ See the later `defcustom' for user-facing documentation and default.")
 
 (defvar ai-code-discussion-auto-follow-up-enabled t
   "Forward declaration for `ai-code-discussion-auto-follow-up-enabled'.
+See the later `defcustom' for user-facing documentation and default.")
+
+(defvar ai-code-discussion-auto-follow-up-on-code-change nil
+  "Forward declaration for `ai-code-discussion-auto-follow-up-on-code-change'.
 See the later `defcustom' for user-facing documentation and default.")
 
 (defconst ai-code--auto-test-type-ask-choices
@@ -452,7 +456,7 @@ Send-time routing uses this result for test and discussion follow-up suffixes."
   value)
 
 (defun ai-code--cycle-discussion-auto-follow-up-value (current-val)
-  "Return the next cycled value of `ai-code-discussion-auto-follow-up-enabled` for CURRENT-VAL."
+  "Return the next cycled discussion follow-up setting for CURRENT-VAL."
   (pcase current-val
     ('nil 'ask-me)
     ((or 't 'ask-me) 'always)

@@ -710,7 +710,7 @@ If no such buffer is found, report a user-error."
       (user-error "No test file found in current windows.  Please open a test file first"))))
 
 (defconst ai-code--tdd-test-pattern-instruction
-  "\nFollow the test-code pattern in the current project. Write the test-code in the test-file. If the test-file does not exist, create it using the same test-filename pattern used in this repository."
+  "\nFollow the test-code pattern in the current project. Write the test-code in the test-file. If the test-file does not exist, create it using the same test-filename pattern used in this repository. If the test uses random values (for example random numbers or UUIDs), make it reproducible by fixing the random seed or replacing them with deterministic fixtures."
   "Instruction appended to TDD prompts to enforce the project's test pattern.")
 
 (defconst ai-code--tdd-run-test-after-this-stage-instruction

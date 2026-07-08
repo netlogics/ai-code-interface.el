@@ -1,1 +1,1 @@
-If any program code changes, run unit-tests and follow up on the test-result (fix code if there is an error).
+If any program code changes, run unit-tests and follow up on the test-result (fix code if there is an error). If the tests use random values (for example random numbers or UUIDs), make them reproducible by fixing the random seed or replacing them with deterministic fixtures.

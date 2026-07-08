@@ -27,6 +27,13 @@
       (should (string-match-p "Stage 2 - Green" suffix))
       (should (string-match-p "Do not refactor during Green" suffix)))))
 
+(ert-deftest ai-code-test-resolve-tdd-suffix-requires-reproducible-random-tests ()
+  "Test that TDD suffix requires deterministic handling of random test data."
+  (let ((suffix (ai-code--test-after-code-change--resolve-tdd-suffix)))
+    (should (string-match-p "fixing the random seed" suffix))
+    (should (string-match-p "random numbers or UUIDs" suffix))
+    (should (string-match-p "deterministic fixtures" suffix))))
+
 (ert-deftest ai-code-test-resolve-tdd-suffix-reuses-shared-each-stage-instruction ()
   "Test that TDD suffix can reuse shared each-stage instruction when available."
   (let ((ai-code--tdd-test-pattern-instruction "")
@@ -206,6 +213,13 @@
         (should (equal inline-suffix
                        (ai-code--auto-test-harness-reference-suffix
                         'test-after-change)))))))
+
+(ert-deftest ai-code-test-auto-test-inline-test-after-change-suffix-requires-reproducible-random-tests ()
+  "Test that test-after-change suffix requires deterministic random test data."
+  (let ((suffix (ai-code--auto-test-inline-suffix-for-type 'test-after-change)))
+    (should (string-match-p "fixing the random seed" suffix))
+    (should (string-match-p "random numbers or UUIDs" suffix))
+    (should (string-match-p "deterministic fixtures" suffix))))
 
 (ert-deftest ai-code-test-auto-test-harness-prompt-path-uses-repo-relative-path ()
   "Test that harness prompt path becomes a repo-relative path."
@@ -940,4 +954,3 @@
 (provide 'test_ai-code-harness)
 
 ;;; test_ai-code-harness.el ends here
-

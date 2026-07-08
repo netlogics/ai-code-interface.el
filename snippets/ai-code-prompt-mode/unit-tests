@@ -10,4 +10,5 @@ Include tests for:
 1. Normal expected inputs
 2. Edge cases
 3. Invalid inputs
+If the tests use random values (for example random numbers or UUIDs), make them reproducible by fixing the random seed or replacing them with deterministic fixtures.
 Use ${2:preferred testing framework} syntax.
