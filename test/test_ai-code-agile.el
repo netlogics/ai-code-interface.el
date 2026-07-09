@@ -129,7 +129,9 @@
         (ai-code--write-test "my-function")
         (should (string-match-p "TDD" captured-prompt))
         (should (string-match-p "fixing the random seed" captured-prompt))
-        (should (string-match-p "deterministic fixtures" captured-prompt))))))
+        (should (string-match-p "deterministic fixtures" captured-prompt))
+        (should (string-match-p "Prefer a small set of high-value tests" captured-prompt))
+        (should (string-match-p "Avoid redundant, duplicate, or low-value tests" captured-prompt))))))
 
 ;;; Tests for ai-code-tdd-cycle
 
@@ -274,7 +276,8 @@
         (should (string-match-p "Run test after each stage" captured-prompt))
         (should (string-match-p "summary of test result" captured-prompt))
         (should (string-match-p "List the public API / log key / config key change if there is" captured-prompt))
-        (should (string-match-p "fixing the random seed" captured-prompt))))))
+        (should (string-match-p "fixing the random seed" captured-prompt))
+        (should (string-match-p "Prefer a small set of high-value tests" captured-prompt))))))
 
 (ert-deftest ai-code-test-tdd-red-green-blue-stage-prompt-includes-stage-test-run-and-change-summary ()
   "Verify Red + Green + Blue stage prompt asks to run test after each stage and summarize key changes."

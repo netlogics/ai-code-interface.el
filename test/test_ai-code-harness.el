@@ -32,7 +32,9 @@
   (let ((suffix (ai-code--test-after-code-change--resolve-tdd-suffix)))
     (should (string-match-p "fixing the random seed" suffix))
     (should (string-match-p "random numbers or UUIDs" suffix))
-    (should (string-match-p "deterministic fixtures" suffix))))
+    (should (string-match-p "deterministic fixtures" suffix))
+    (should (string-match-p "Prefer a small set of high-value tests" suffix))
+    (should (string-match-p "Avoid redundant, duplicate, or low-value tests" suffix))))
 
 (ert-deftest ai-code-test-resolve-tdd-suffix-reuses-shared-each-stage-instruction ()
   "Test that TDD suffix can reuse shared each-stage instruction when available."
@@ -219,7 +221,22 @@
   (let ((suffix (ai-code--auto-test-inline-suffix-for-type 'test-after-change)))
     (should (string-match-p "fixing the random seed" suffix))
     (should (string-match-p "random numbers or UUIDs" suffix))
-    (should (string-match-p "deterministic fixtures" suffix))))
+    (should (string-match-p "deterministic fixtures" suffix))
+    (should (string-match-p "Prefer a small set of high-value tests" suffix))
+    (should (string-match-p "Avoid redundant, duplicate, or low-value tests" suffix))))
+
+(ert-deftest ai-code-test-bundled-auto-test-prompts-prefer-high-value-tests ()
+  "Test that bundled harness prompts discourage redundant low-value tests."
+  (dolist (path '("prompt/test-after-change.v1.md"
+                  "prompt/test-after-change-diagnostics.v1.md"
+                  "prompt/tdd.v1.md"
+                  "prompt/tdd-diagnostics.v1.md"
+                  "prompt/tdd-with-refactoring.v1.md"
+                  "prompt/tdd-with-refactoring-diagnostics.v1.md"))
+    (with-temp-buffer
+      (insert-file-contents path)
+      (should (search-forward "Prefer a small set of high-value tests" nil t))
+      (should (search-forward "Avoid redundant, duplicate, or low-value tests" nil t)))))
 
 (ert-deftest ai-code-test-auto-test-harness-prompt-path-uses-repo-relative-path ()
   "Test that harness prompt path becomes a repo-relative path."

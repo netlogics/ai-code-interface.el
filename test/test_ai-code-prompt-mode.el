@@ -373,6 +373,15 @@ evaluates BODY, and ensures everything is cleaned up afterward."
       (let ((ai-code-prompt-mode-dir (expand-file-name "ai-code-prompt-mode" snippet-dir)))
         (should (file-directory-p ai-code-prompt-mode-dir))))))
 
+(ert-deftest ai-code-test-test-generation-snippets-prefer-high-value-tests ()
+  "Test that bundled test-generation snippets discourage redundant low-value tests."
+  (dolist (path '("snippets/ai-code-prompt-mode/unit-tests"
+                 "snippets/ai-code-prompt-mode/create-tests"))
+    (with-temp-buffer
+      (insert-file-contents path)
+      (should (search-forward "Prefer a small set of high-value tests" nil t))
+      (should (search-forward "Avoid redundant, duplicate, or low-value tests" nil t)))))
+
 (ert-deftest ai-code-test-auto-mode-alist-pattern ()
   "Test that `auto-mode-alist` correctly matches .ai.code.prompt.org."
   (let ((entry (assoc "/\\.ai\\.code\\.files/.*\\.org\\'" auto-mode-alist)))

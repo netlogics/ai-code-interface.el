@@ -11,4 +11,5 @@ Include tests for:
 2. Edge cases
 3. Invalid inputs
 If the tests use random values (for example random numbers or UUIDs), make them reproducible by fixing the random seed or replacing them with deterministic fixtures.
+Prefer a small set of high-value tests that cover the main behavior, meaningful edge cases, and important failure modes. Avoid redundant, duplicate, or low-value tests that add maintenance cost.
 Use ${2:preferred testing framework} syntax.

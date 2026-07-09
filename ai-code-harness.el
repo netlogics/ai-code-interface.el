@@ -37,7 +37,7 @@
 
 ;;;###autoload
 (defcustom ai-code-test-after-code-change-suffix
-  "If any program code changes, run unit-tests and follow up on the test-result (fix code if there is an error). If the tests use random values (for example random numbers or UUIDs), make them reproducible by fixing the random seed or replacing them with deterministic fixtures."
+  "If any program code changes, run unit-tests and follow up on the test-result (fix code if there is an error). If the tests use random values (for example random numbers or UUIDs), make them reproducible by fixing the random seed or replacing them with deterministic fixtures. Prefer a small set of high-value tests that cover the main behavior, meaningful edge cases, and important failure modes. Avoid redundant, duplicate, or low-value tests that add maintenance cost."
   "User-provided prompt suffix for test-after-code-change."
   :type '(choice (const nil) string)
   :group 'ai-code)
