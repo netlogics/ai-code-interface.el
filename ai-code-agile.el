@@ -710,7 +710,7 @@ If no such buffer is found, report a user-error."
       (user-error "No test file found in current windows.  Please open a test file first"))))
 
 (defconst ai-code--high-value-tests-instruction
-  "Prefer a small set of high-value tests. Cover only distinct behaviors, important edge cases, or regressions that materially increase confidence. Do not add low-value, redundant, or duplicate tests."
+  "Prefer a small set of high-value tests. Cover only distinct behaviors, important edge cases, or regressions that materially increase confidence. Do not add low-value or duplicate tests."
   "Instruction included in test-writing prompts to keep generated tests focused.")
 
 (defconst ai-code--tdd-test-pattern-instruction

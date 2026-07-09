@@ -3,5 +3,5 @@
 # key: unittests
 # contributor: Matic Vertačnik
 # --
-/architect Generate a small set of high-value unit tests for the provided code. Cover only the most important success, failure, or regression behaviors that materially increase confidence. Do not add low-value, redundant, or duplicate tests. If the tests use random values (for example random numbers or UUIDs), make them reproducible by fixing the random seed or replacing them with deterministic fixtures.
+/architect Generate a small set of high-value unit tests for the provided code. Cover only the most important success, failure, or regression behaviors that materially increase confidence. Do not add low-value or duplicate tests. If the tests use random values (for example random numbers or UUIDs), make them reproducible by fixing the random seed or replacing them with deterministic fixtures.
 $0
