@@ -2,6 +2,8 @@
 * Release history
 
 ** Main branch change
+- Fix wrapped session link hover coverage in Ghostel, by fxa
+- Chore: Require deterministic randomness in AI-generated test prompts
 
 ** 1.88
 - Fix: Fix wrapped session link underlines, by fxa
