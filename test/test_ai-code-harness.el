@@ -30,6 +30,8 @@
 (ert-deftest ai-code-test-resolve-tdd-suffix-requires-reproducible-random-tests ()
   "Test that TDD suffix requires deterministic handling of random test data."
   (let ((suffix (ai-code--test-after-code-change--resolve-tdd-suffix)))
+    (should (string-match-p "small set of high-value tests" suffix))
+    (should (string-match-p "duplicate tests" suffix))
     (should (string-match-p "fixing the random seed" suffix))
     (should (string-match-p "random numbers or UUIDs" suffix))
     (should (string-match-p "deterministic fixtures" suffix))))
@@ -217,6 +219,8 @@
 (ert-deftest ai-code-test-auto-test-inline-test-after-change-suffix-requires-reproducible-random-tests ()
   "Test that test-after-change suffix requires deterministic random test data."
   (let ((suffix (ai-code--auto-test-inline-suffix-for-type 'test-after-change)))
+    (should (string-match-p "small set of high-value tests" suffix))
+    (should (string-match-p "duplicate tests" suffix))
     (should (string-match-p "fixing the random seed" suffix))
     (should (string-match-p "random numbers or UUIDs" suffix))
     (should (string-match-p "deterministic fixtures" suffix))))

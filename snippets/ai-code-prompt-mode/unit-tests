@@ -6,7 +6,8 @@
 /ask
 Generate unit tests for the following function:
 ${1:function}
-Include tests for:
+Prefer a small set of high-value tests. Cover only distinct behaviors that materially increase confidence, and do not add low-value, redundant, or duplicate tests.
+Consider the most important items from:
 1. Normal expected inputs
 2. Edge cases
 3. Invalid inputs
