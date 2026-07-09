@@ -711,7 +711,7 @@ If no such buffer is found, report a user-error."
 
 (defconst ai-code--high-value-tests-instruction
   "Prefer a small set of high-value tests. Cover only distinct behaviors, important edge cases, or regressions that materially increase confidence. Do not add low-value, redundant, or duplicate tests."
-  "Instruction appended to test-writing prompts to keep generated tests focused.")
+  "Instruction included in test-writing prompts to keep generated tests focused.")
 
 (defconst ai-code--tdd-test-pattern-instruction
   (concat
