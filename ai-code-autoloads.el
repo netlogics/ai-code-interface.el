@@ -1108,7 +1108,8 @@ Disable future auto-display of the onboarding quickstart." t)
 (defvar ai-code-test-after-code-change-suffix
   (concat
    "If any program code changes, "
-   "run unit-tests and follow up on the test-result (fix code if there is an error).")
+   "run unit-tests and follow up on the test-result (fix code if there is an error). "
+   "If the tests use random values (for example random numbers or UUIDs), make them reproducible by fixing the random seed or replacing them with deterministic fixtures.")
   "\
 User-provided prompt suffix for test-after-code-change.")
 (custom-autoload 'ai-code-test-after-code-change-suffix "ai-code-harness" t)
