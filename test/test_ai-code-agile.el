@@ -128,6 +128,8 @@
                  (lambda (text) (setq captured-prompt text))))
         (ai-code--write-test "my-function")
         (should (string-match-p "TDD" captured-prompt))
+        (should (string-match-p "small set of high-value tests" captured-prompt))
+        (should (string-match-p "duplicate tests" captured-prompt))
         (should (string-match-p "fixing the random seed" captured-prompt))
         (should (string-match-p "deterministic fixtures" captured-prompt))))))
 

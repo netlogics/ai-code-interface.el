@@ -30,7 +30,25 @@
   (with-temp-buffer
     (insert-file-contents "ai-code-autoloads.el")
     (should (search-forward "run unit-tests and follow up on the test-result" nil t))
+    (should (search-forward "small set of high-value tests" nil t))
+    (should (search-forward "duplicate tests" nil t))
     (should-not (search-forward "get_diagnostics MCP tool" nil t))))
+
+(ert-deftest ai-code-test-bundled-prompts-contain-high-value-guidance ()
+  "Bundled prompts and snippets should discourage low-value duplicate tests."
+  (dolist (file '("prompt/test-after-change.v1.md"
+                  "prompt/test-after-change-diagnostics.v1.md"
+                  "prompt/tdd.v1.md"
+                  "prompt/tdd-diagnostics.v1.md"
+                  "prompt/tdd-with-refactoring.v1.md"
+                  "prompt/tdd-with-refactoring-diagnostics.v1.md"
+                  "snippets/ai-code-prompt-mode/create-tests"
+                  "snippets/ai-code-prompt-mode/unit-tests"))
+    (with-temp-buffer
+      (insert-file-contents file)
+      (goto-char (point-min))
+      (should (search-forward "small set of high-value" nil t))
+      (should (search-forward "duplicate tests" nil t)))))
 
 (ert-deftest ai-code-test-ai-code-el-does-not-autoload-private-diagnostics-constant ()
   "Private diagnostics helper constants should not be marked for autoload."

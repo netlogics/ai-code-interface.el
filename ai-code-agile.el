@@ -709,8 +709,20 @@ If no such buffer is found, report a user-error."
     (unless has-test-buffer
       (user-error "No test file found in current windows.  Please open a test file first"))))
 
+(defconst ai-code--high-value-tests-instruction
+  (concat
+   "Prefer a small set of high-value tests. Cover only distinct behaviors, "
+   "important edge cases, or regressions that materially increase confidence. "
+   "Do not add low-value or duplicate tests.")
+  "Instruction included in test-writing prompts to emphasize quality over quantity.
+This guidance exists to discourage AI from generating excessive, low-value, or
+duplicate tests.")
+
 (defconst ai-code--tdd-test-pattern-instruction
-  "\nFollow the test-code pattern in the current project. Write the test-code in the test-file. If the test-file does not exist, create it using the same test-filename pattern used in this repository. If the tests use random values (for example random numbers or UUIDs), make them reproducible by fixing the random seed or replacing them with deterministic fixtures."
+  (concat
+   "\nFollow the test-code pattern in the current project. Write the test-code in the test-file. If the test-file does not exist, create it using the same test-filename pattern used in this repository. "
+   ai-code--high-value-tests-instruction
+   " If the tests use random values (for example random numbers or UUIDs), make them reproducible by fixing the random seed or replacing them with deterministic fixtures.")
   "Instruction appended to TDD prompts to enforce the project's test pattern.")
 
 (defconst ai-code--tdd-run-test-after-this-stage-instruction
