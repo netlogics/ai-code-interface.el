@@ -47,8 +47,7 @@
     (with-temp-buffer
       (insert-file-contents file)
       (goto-char (point-min))
-      (should (search-forward "high-value" nil t))
-      (goto-char (point-min))
+      (should (search-forward "small set of high-value" nil t))
       (should (search-forward "duplicate tests" nil t)))))
 
 (ert-deftest ai-code-test-ai-code-el-does-not-autoload-private-diagnostics-constant ()
