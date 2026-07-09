@@ -1,6 +1,6 @@
 ;;; ai-code-backends-infra-ghostel.el --- Ghostel support for AI Code terminals  -*- lexical-binding: t; -*-
 
-;; Author: Kang Tu, AI Agent
+;; Author: Kang Tu, realazy (cxa)
 ;; SPDX-License-Identifier: Apache-2.0
 
 ;;; Commentary:
