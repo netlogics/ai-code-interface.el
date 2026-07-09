@@ -34,7 +34,7 @@
     (should (search-forward "duplicate tests" nil t))
     (should-not (search-forward "get_diagnostics MCP tool" nil t))))
 
-(ert-deftest ai-code-test-bundled-test-prompts-prefer-high-value-non-duplicate-coverage ()
+(ert-deftest ai-code-test-bundled-prompts-contain-high-value-guidance ()
   "Bundled prompts and snippets should discourage low-value duplicate tests."
   (dolist (file '("prompt/test-after-change.v1.md"
                   "prompt/test-after-change-diagnostics.v1.md"
