@@ -25,13 +25,14 @@
   (let ((header (ai-code-test--file-prefix "ai-code-autoloads.el" 400)))
     (should (string-match-p "^;;; Commentary:" header))))
 
-(ert-deftest ai-code-test-autoloads-file-keeps-generic-test-after-change-default ()
-  "Autoloads file should keep the backend-agnostic test-after-change default."
+(ert-deftest ai-code-test-autoloads-file-omits-harness-test-after-change-custom ()
+  "Autoloads file should omit the harness-only test-after-change custom."
   (with-temp-buffer
     (insert-file-contents "ai-code-autoloads.el")
-    (should (search-forward "run unit-tests and follow up on the test-result" nil t))
-    (should (search-forward "small set of high-value tests" nil t))
-    (should (search-forward "duplicate tests" nil t))
+    (should-not
+     (search-forward "ai-code-test-after-code-change-suffix" nil t))
+    (should-not
+     (search-forward "run unit-tests and follow up on the test-result" nil t))
     (should-not (search-forward "get_diagnostics MCP tool" nil t))))
 
 (ert-deftest ai-code-test-bundled-prompts-contain-high-value-guidance ()

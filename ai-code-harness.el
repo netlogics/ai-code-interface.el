@@ -35,7 +35,6 @@
   (concat (downcase (substring ai-code--diagnostics-first-harness-instruction 0 1))
           (substring ai-code--diagnostics-first-harness-instruction 1)))
 
-;;;###autoload
 (defcustom ai-code-test-after-code-change-suffix
   (concat
    "If any program code changes, run unit-tests and follow up on the test-result (fix code if there is an error). "

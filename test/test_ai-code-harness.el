@@ -266,8 +266,8 @@
    (string-match-p ".ai.code.files"
                    (documentation 'ai-code--auto-test-harness-directory))))
 
-(ert-deftest ai-code-test-autoloads-load-with-harness-custom-unbound ()
-  "Test that loading autoloads works before harness custom is defined."
+(ert-deftest ai-code-test-autoloads-load-with-harness-custom-omitted ()
+  "Test that loading autoloads does not bind harness-only test suffix customs."
   (let* ((autoload-file (expand-file-name "ai-code-autoloads.el" default-directory))
          (symbols '(ai-code-auto-test-suffix
                     ai-code-test-after-code-change-suffix))
@@ -288,7 +288,8 @@
                      (load autoload-file nil t)
                      'loaded)
                  (error 'failed))))
-          (should (boundp 'ai-code-test-after-code-change-suffix)))
+          (should-not (boundp 'ai-code-auto-test-suffix))
+          (should-not (boundp 'ai-code-test-after-code-change-suffix)))
       (dolist (state saved-states)
         (pcase-let ((`(,symbol ,was-bound ,value) state))
           (if was-bound
