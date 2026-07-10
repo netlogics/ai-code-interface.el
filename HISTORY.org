@@ -2,6 +2,8 @@
 * Release history
 
 ** Main branch change
+- Fix Ghostel startup blocked by linum/margin overlay false positive
+- Preserve Ghostel links during animated redraws
 - Fix Ghostel IME preedit flicker, by fxa
 - Fix wrapped session link hover coverage in Ghostel, by fxa
 - Chore: Require deterministic randomness in AI-generated test prompts
