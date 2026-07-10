@@ -1195,5 +1195,58 @@ variables for the terminal process."
           (ai-code-backends-infra-ghostel--wrap-process-filter buffer proc))
         (cons buffer proc)))))
 
+;;; Ghostel redisplay protection
+;;
+;; During session recovery (history replay burst), Ghostel's native Zig module
+;; rapidly rewrites the buffer.  Emacs redisplay subsystems (window anchoring,
+;; jit-lock, yascroll) can reference stale buffer positions before the display
+;; engine catches up, producing `args-out-of-range' errors.  The advices below
+;; catch these transient errors so they don't propagate to the user.
+
+(defun ai-code-backends-infra-ghostel--safe-around (orig-fn &rest args)
+  "Call ORIG-FN with ARGS, suppressing `args-out-of-range' in ghostel buffers."
+  (condition-case nil
+      (apply orig-fn args)
+    (args-out-of-range nil)))
+
+(defun ai-code-backends-infra-ghostel--safe-jit-lock (orig-fn &rest args)
+  "Call ORIG-FN with ARGS; suppress `args-out-of-range' only in ghostel buffers."
+  (if (derived-mode-p 'ghostel-mode)
+      (condition-case nil
+          (apply orig-fn args)
+        (args-out-of-range nil))
+    (apply orig-fn args)))
+
+(defun ai-code-backends-infra-ghostel--suppress-yascroll (orig-fn &optional arg)
+  "Prevent yascroll-bar-mode from enabling in ghostel buffers."
+  (if (and (derived-mode-p 'ghostel-mode)
+           (or (not arg) (> (prefix-numeric-value arg) 0)))
+      nil
+    (funcall orig-fn arg)))
+
+(defun ai-code-backends-infra-ghostel--install-redisplay-protection ()
+  "Install advice to protect Ghostel from redisplay race conditions."
+  (advice-add 'ghostel--redraw-now :around
+              #'ai-code-backends-infra-ghostel--safe-around
+              '((name . ai-code--safe-redraw-now)))
+  (advice-add 'ghostel--pixel-anchor :around
+              #'ai-code-backends-infra-ghostel--safe-around
+              '((name . ai-code--safe-pixel-anchor)))
+  (advice-add 'ghostel--window-buffer-change :around
+              #'ai-code-backends-infra-ghostel--safe-around
+              '((name . ai-code--safe-window-buffer-change)))
+  (advice-add 'ghostel--adjust-size :around
+              #'ai-code-backends-infra-ghostel--safe-around
+              '((name . ai-code--safe-adjust-size)))
+  (advice-add 'jit-lock-function :around
+              #'ai-code-backends-infra-ghostel--safe-jit-lock
+              '((name . ai-code--safe-jit-lock-in-ghostel)))
+  (when (fboundp 'yascroll-bar-mode)
+    (advice-add 'yascroll-bar-mode :around
+                #'ai-code-backends-infra-ghostel--suppress-yascroll
+                '((name . ai-code--suppress-yascroll-in-ghostel)))))
+
+(ai-code-backends-infra-ghostel--install-redisplay-protection)
+
 (provide 'ai-code-backends-infra-ghostel)
 ;;; ai-code-backends-infra-ghostel.el ends here
