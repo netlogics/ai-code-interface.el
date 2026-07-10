@@ -2,6 +2,9 @@
 * Release history
 
 ** Main branch change
+
+** 1.89
+- Fix: Avoid autoload-time evaluation of harness test suffix, reported by fxa
 - Fix Ghostel startup blocked by linum/margin overlay false positive
 - Preserve Ghostel links during animated redraws
 - Fix Ghostel IME preedit flicker, by fxa
