@@ -22,6 +22,7 @@
 (defvar ai-code-session-link-inhibit-functions)
 (defvar ai-code-backends-infra--session-directory)
 (defvar ghostel--fake-cursor-overlay)
+(defvar ghostel--cursor-char-pos)
 (defvar ghostel--plain-link-detection-begin)
 (defvar ghostel--plain-link-detection-end)
 (defvar ghostel-link-map)
@@ -426,13 +427,105 @@
   "Ghostel AI session configuration should install visible image recovery."
   (with-temp-buffer
     (setq-local ai-code-backends-infra--session-terminal-backend 'ghostel)
-    (cl-letf (((symbol-function 'ai-code-backends-infra--configure-session-input-shortcuts)
-               (lambda () nil))
-              ((symbol-function 'ai-code-backends-infra--install-navigation-cursor-sync)
-               (lambda () nil)))
-      (ai-code-backends-infra--configure-ghostel-buffer))
+    (cl-letf
+        (((symbol-function 'ghostel--window-anchored-p)
+          (lambda (&rest _args) t))
+         ((symbol-function 'ai-code-backends-infra--configure-session-input-shortcuts)
+          (lambda () nil))
+         ((symbol-function 'ai-code-backends-infra--install-navigation-cursor-sync)
+          (lambda () nil)))
+      (ai-code-backends-infra--configure-ghostel-buffer)
+      (should
+       (advice-member-p
+        #'ai-code-backends-infra-ghostel--window-anchored-p-around
+        'ghostel--window-anchored-p))
+      (should
+       (advice-member-p
+        #'ai-code-backends-infra-ghostel--linkify-session-region-around
+        'ai-code-session-link--linkify-session-region)))
     (should (memq #'ai-code-backends-infra-ghostel--window-scroll
                   window-scroll-functions))))
+
+(ert-deftest test-ai-code-backends-infra-ghostel--window-anchored-p-around-image-overflow ()
+  "An overflowing image should prevent Ghostel redraw re-anchoring."
+  (save-window-excursion
+    (with-temp-buffer
+      (let ((window (selected-window))
+            (buffer (current-buffer)))
+        (set-window-buffer window buffer)
+        (setq-local ai-code-backends-infra--session-terminal-backend 'ghostel)
+        (insert "Saved screenshot.png\ninput\n")
+        (let ((preview (make-overlay 7 21 buffer))
+              (measured-height 500)
+              (pixel-vscroll 0)
+              (original-result t)
+              (pixel-calls 0)
+              (original-calls 0))
+          (overlay-put preview 'ai-code-session-image-preview t)
+          (overlay-put preview 'after-string "\n[large image]\n")
+          (set-window-start window (point-min) t)
+          (cl-letf (((symbol-function 'window-body-height)
+                     (lambda (target-window &optional pixelwise)
+                       (should (eq target-window window))
+                       (should pixelwise)
+                       300))
+                    ((symbol-function 'default-line-height)
+                     (lambda () 20))
+                    ((symbol-function 'window-vscroll)
+                     (lambda (target-window &optional pixelwise)
+                       (should (eq target-window window))
+                       (should pixelwise)
+                       pixel-vscroll))
+                    ((symbol-function 'window-text-pixel-size)
+                     (lambda (target-window from to &rest _args)
+                       (setq pixel-calls (1+ pixel-calls))
+                       (should (eq target-window window))
+                       (should (= from (window-start window)))
+                       (should (= to (point-max)))
+                       (cons 100 measured-height)))
+                    ((symbol-function 'original-window-anchored-p)
+                     (lambda (&rest _args)
+                       (setq original-calls (1+ original-calls))
+                       original-result)))
+            ;; Text rows fit, but image pixels overflow the body plus
+            ;; Ghostel's one-line partial-row tolerance.
+            (should-not
+             (ai-code-backends-infra-ghostel--window-anchored-p-around
+              #'original-window-anchored-p window))
+            ;; The same display is anchored once its measured height fits.
+            (setq measured-height 320)
+            (should
+             (ai-code-backends-infra-ghostel--window-anchored-p-around
+              #'original-window-anchored-p window))
+            ;; Pixel vscroll represents preview content already clipped above
+            ;; the window start after Ghostel bottom-aligns a tall preview.
+            (setq measured-height 330
+                  pixel-vscroll 10)
+            (should
+             (ai-code-backends-infra-ghostel--window-anchored-p-around
+              #'original-window-anchored-p window))
+            ;; A malformed measurement safely preserves Ghostel's result.
+            (setq measured-height 'invalid)
+            (should
+             (ai-code-backends-infra-ghostel--window-anchored-p-around
+              #'original-window-anchored-p window))
+            (should (= pixel-calls 4))
+            ;; Without an AI image preview, preserve Ghostel's result.
+            (delete-overlay preview)
+            (setq measured-height 500)
+            (should
+             (ai-code-backends-infra-ghostel--window-anchored-p-around
+              #'original-window-anchored-p window))
+            (should (= pixel-calls 4))
+            ;; A window Ghostel already considers unanchored needs no
+            ;; display geometry measurement.
+            (move-overlay preview 7 21 buffer)
+            (setq original-result nil)
+            (should-not
+             (ai-code-backends-infra-ghostel--window-anchored-p-around
+              #'original-window-anchored-p window))
+            (should (= pixel-calls 4))
+            (should (= original-calls 6))))))))
 
 (ert-deftest test-ai-code-backends-infra-ghostel-configures-image-mediums ()
   "Ghostel AI session configuration should enable local image mediums."
@@ -511,6 +604,120 @@
                   1)))))
       (when (file-directory-p root)
         (delete-directory root t)))))
+
+(ert-deftest test-ai-code-backends-infra-ghostel--visible-linkify-keeps-input-at-bottom ()
+  "Adding a preview to a following window should keep its input visible."
+  (save-window-excursion
+    (with-temp-buffer
+      (let ((window (selected-window))
+            (anchor-count 0)
+            (following t)
+            input-visible)
+        (set-window-buffer window (current-buffer))
+        (setq-local ai-code-backends-infra--session-terminal-backend 'ghostel)
+        (insert "Saved screenshot.png\ninput\n")
+        (cl-letf
+            (((symbol-function
+               'ai-code-backends-infra-ghostel--redraw-inhibited-p)
+              (lambda (_buffer) nil))
+             ((symbol-function
+               'ai-code-backends-infra-ghostel--visible-image-region)
+              (lambda (_window) (cons (point-min) (point-max))))
+             ((symbol-function
+               'ai-code-backends-infra-ghostel--linkify-session-region)
+              (lambda (&rest _args) nil))
+             ((symbol-function
+               'ai-code-backends-infra-ghostel--cache-preserved-link-spans)
+              (lambda (&rest _args) nil))
+             ((symbol-function
+               'ai-code-backends-infra-ghostel--trusted-local-session-p)
+              (lambda () t))
+             ((symbol-function 'ghostel--window-anchored-p)
+              (lambda (target-window &optional _body-height)
+                (should (eq target-window window))
+                following))
+             ((symbol-function 'ghostel--anchor-window)
+              (lambda (&optional target-window _force)
+                (should (eq target-window window))
+                (setq anchor-count (1+ anchor-count)
+                      input-visible t)))
+             ((symbol-function
+               'ai-code-session-link--linkify-strict-image-preview-region)
+              (lambda (start end)
+                (unless
+                    (cl-some
+                     (lambda (overlay)
+                       (overlay-get overlay 'ai-code-session-image-preview))
+                     (overlays-in start end))
+                  (let ((preview (make-overlay start end)))
+                    (overlay-put preview 'ai-code-session-image-preview t))))))
+          (ai-code-backends-infra-ghostel--linkify-visible-image-previews
+           (current-buffer) window)
+          (should input-visible)
+          (should (= anchor-count 1))
+          ;; An unchanged rescan must not introduce another anchor jump.
+          (setq input-visible nil)
+          (ai-code-backends-infra-ghostel--linkify-visible-image-previews
+           (current-buffer) window)
+          (should-not input-visible)
+          (should (= anchor-count 1))
+          ;; Adding a preview while reading scrollback must not steal focus.
+          (dolist (overlay (overlays-in (point-min) (point-max)))
+            (when (overlay-get overlay 'ai-code-session-image-preview)
+              (delete-overlay overlay)))
+          (setq following nil)
+          (ai-code-backends-infra-ghostel--linkify-visible-image-previews
+           (current-buffer) window)
+          (should-not input-visible)
+          (should (= anchor-count 1))
+          ;; The generic delayed linkifier used by the process filter must
+          ;; preserve the same follow transition.
+          (dolist (overlay (overlays-in (point-min) (point-max)))
+            (when (overlay-get overlay 'ai-code-session-image-preview)
+              (delete-overlay overlay)))
+          (setq following t)
+          (ai-code-backends-infra-ghostel--linkify-session-region-around
+           (lambda (start end)
+             (ai-code-session-link--linkify-strict-image-preview-region
+              start end))
+           (point-min)
+           (point-max))
+          (should input-visible)
+          (should (= anchor-count 2)))))))
+
+(ert-deftest test-ai-code-backends-infra-ghostel--apply-image-preview-for-file-around-live-input-row ()
+  "Ghostel should keep image paths in its live input row text-only."
+  (with-temp-buffer
+    (setq-local ai-code-backends-infra--session-terminal-backend 'ghostel)
+    (let ((history-start (point)))
+      (insert "/tmp/history.png\n")
+      (let ((input-start (point)))
+        (insert "/tmp/input.png")
+        (setq-local ghostel--cursor-char-pos (point-max))
+        (let ((below-start (progn
+                             (insert "\n")
+                             (point))))
+          (insert "/tmp/below.png")
+          (let (calls input-preview)
+            (ai-code-backends-infra-ghostel--apply-image-preview-for-file-around
+             (lambda (start &rest _args)
+               (push start calls))
+             history-start (1- input-start) "/tmp/history.png"
+             "/tmp/history.png")
+            (setq input-preview
+                  (make-overlay input-start (1- below-start)))
+            (overlay-put input-preview 'ai-code-session-image-preview t)
+            (overlay-put input-preview 'after-string "[preview]")
+            (ai-code-backends-infra-ghostel--apply-image-preview-for-file-around
+             (lambda (start &rest _args)
+               (push start calls))
+             input-start (1- below-start) "/tmp/input.png" "/tmp/input.png")
+            (ai-code-backends-infra-ghostel--apply-image-preview-for-file-around
+             (lambda (start &rest _args)
+               (push start calls))
+             below-start (point-max) "/tmp/below.png" "/tmp/below.png")
+            (should (equal calls (list below-start history-start)))
+            (should-not (overlay-buffer input-preview))))))))
 
 (ert-deftest test-ai-code-backends-infra-ghostel-schedules-visible-linkify ()
   "Visible image linkification should schedule bounded window scans."
