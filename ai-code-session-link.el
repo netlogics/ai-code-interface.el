@@ -67,6 +67,18 @@ impose a fixed hard cap instead."
                  (integer :tag "Fixed pixel cap"))
   :group 'ai-code)
 
+(defcustom ai-code-session-link-ghostel-image-preview-vertical-margin 'auto
+  "Vertical margin around Ghostel session image previews.
+The default value `auto' uses 0.3 times the session window's line height, so
+the spacing follows font-size changes.  Set a non-negative integer to use a
+fixed pixel margin instead; zero disables the margin."
+  :type '(choice (const :tag "Automatic (0.3 line height)" auto)
+                 (natnum :tag "Fixed pixels"))
+  :group 'ai-code)
+
+(defconst ai-code-session-link--image-preview-auto-margin-ratio 0.3
+  "Line-height fraction used for automatic image preview margins.")
+
 (defconst ai-code-session-link--visible-image-preview-max-line-width 2048
   "Maximum candidate width inspected by strict visible image preview scanning.")
 
@@ -632,6 +644,12 @@ Expensive project-wide resolution stays in
               (<= (file-attribute-size attrs)
                   ai-code-session-link-ghostel-image-preview-max-bytes)))))
 
+(defun ai-code-session-link--image-preview-file-signature (file)
+  "Return a size and modification-time signature for image FILE."
+  (when-let* ((attributes (file-attributes file 'integer)))
+    (cons (file-attribute-size attributes)
+          (file-attribute-modification-time attributes))))
+
 (defun ai-code-session-link--parse-file-link-text (text)
   "Parse file-like session link TEXT into a plist."
   (when-let* ((text (ai-code-session-link--normalize-link-text text)))
@@ -662,8 +680,11 @@ Expensive project-wide resolution stays in
               ((ai-code-session-link--safe-local-image-file-p abs-file)))
     abs-file))
 
-(defun ai-code-session-link--delete-image-preview-overlays (start end)
-  "Delete image preview overlays touching START through END."
+(defun ai-code-session-link--delete-image-preview-overlays
+    (start end &optional stale-only)
+  "Delete image preview overlays touching START through END.
+When STALE-ONLY is non-nil, preserve overlays still anchored to their image
+link text."
   (let* ((line-start (save-excursion
                        (goto-char start)
                        (line-beginning-position)))
@@ -678,7 +699,11 @@ Expensive project-wide resolution stays in
                               (overlays-at end)
                               (overlays-at line-end)
                               (overlays-at scan-end))))
-      (when (overlay-get overlay 'ai-code-session-image-preview)
+      (when (and (overlay-get overlay 'ai-code-session-image-preview)
+                 (or (not stale-only)
+                     (not
+                      (ai-code-session-link--live-image-preview-overlay-p
+                       overlay))))
         (delete-overlay overlay)))))
 
 (defun ai-code-session-link--image-preview-indent (match-start)
@@ -744,6 +769,26 @@ INDENT is inserted before the image on the preview line."
   (when (ai-code-session-link--image-preview-enabled-p)
     (ai-code-session-link--image-preview-file link-text)))
 
+(defun ai-code-session-link--image-preview-vertical-margin ()
+  "Return the current image preview vertical margin in pixels."
+  (let ((setting ai-code-session-link-ghostel-image-preview-vertical-margin))
+    (cond
+     ((integerp setting) (max 0 setting))
+     ((eq setting 'auto)
+      (let* ((window (get-buffer-window (current-buffer) t))
+             (line-height
+              (ignore-errors
+                (if window
+                    (with-selected-window window (default-line-height))
+                  (default-line-height)))))
+        (if (and (numberp line-height) (> line-height 0))
+            (max 1
+                 (round
+                  (* ai-code-session-link--image-preview-auto-margin-ratio
+                     line-height)))
+          6)))
+     (t 0))))
+
 (defun ai-code-session-link--live-image-preview-overlay-p (overlay)
   "Return non-nil when OVERLAY is still anchored to its image link text."
   (and (overlayp overlay)
@@ -751,10 +796,22 @@ INDENT is inserted before the image on the preview line."
        (overlay-get overlay 'ai-code-session-image-preview)
        (< (overlay-start overlay) (overlay-end overlay))
        (let ((link-text (overlay-get overlay 'ai-code-session-image-link-text))
+             (file (overlay-get overlay 'ai-code-session-image-file))
+             (file-signature
+              (overlay-get overlay 'ai-code-session-image-file-signature))
+             (vertical-margin
+              (overlay-get overlay 'ai-code-session-image-vertical-margin))
              (display-text
               (or (overlay-get overlay 'ai-code-session-image-display-text)
                   (overlay-get overlay 'ai-code-session-image-link-text))))
          (and link-text
+              file
+              file-signature
+              (equal file-signature
+                     (ai-code-session-link--image-preview-file-signature file))
+              (integerp vertical-margin)
+              (= vertical-margin
+                 (ai-code-session-link--image-preview-vertical-margin))
               display-text
               (get-text-property (overlay-start overlay)
                                  'ai-code-session-link)
@@ -852,11 +909,12 @@ when no window shows the buffer."
      (and (integerp ai-code-session-link-ghostel-image-preview-max-height)
           ai-code-session-link-ghostel-image-preview-max-height))))
 
-(defun ai-code-session-link--create-image-preview (file max-width max-height)
+(defun ai-code-session-link--create-image-preview
+    (file max-width max-height vertical-margin)
   "Create a data-backed preview image for FILE.
 MAX-WIDTH and MAX-HEIGHT are pixel caps passed to `create-image', which only
 scales down, so a smaller image keeps its native size.  A nil cap leaves that
-dimension unbounded.
+dimension unbounded.  VERTICAL-MARGIN is the pixel gap above and below it.
 
 Using image data instead of a file-backed image spec keeps inline previews
 stable when `image-mode' opens and flushes the same image file."
@@ -867,7 +925,9 @@ stable when `image-mode' opens and flushes the same image file."
     (ignore-errors
       (apply #'create-image
              data type data-p
-             (append (when max-width (list :max-width max-width))
+             (append (when (> vertical-margin 0)
+                       (list :margin (cons 0 vertical-margin)))
+                     (when max-width (list :max-width max-width))
                      (when max-height (list :max-height max-height)))))))
 
 (defun ai-code-session-link--apply-image-preview (match-start match-end link-text)
@@ -893,19 +953,28 @@ stable when `image-mode' opens and flushes the same image file."
               display-text))
            (indent (ai-code-session-link--image-preview-indent match-start))
            (dimensions (ai-code-session-link--image-preview-max-dimensions indent))
-           (image (ai-code-session-link--create-image-preview
-                   file (car dimensions) (cdr dimensions))))
-      (when image
-        (let ((overlay (make-overlay match-start anchor-end nil nil nil)))
-          (overlay-put overlay 'ai-code-session-image-preview t)
-          (overlay-put overlay 'ai-code-session-image-file file)
-          (overlay-put overlay 'ai-code-session-image-link-text link-text)
-          (overlay-put overlay 'ai-code-session-image-display-text
-                       (or display-text link-text))
-          (overlay-put overlay 'after-string
-                       (ai-code-session-link--image-preview-string
-                        image file indent))
-          overlay)))))
+           (vertical-margin
+            (ai-code-session-link--image-preview-vertical-margin))
+           (existing
+            (ai-code-session-link--image-preview-overlay-present-p
+             match-start match-end display-text)))
+      (unless existing
+        (when-let* ((image (ai-code-session-link--create-image-preview
+                            file (car dimensions) (cdr dimensions)
+                            vertical-margin)))
+          (let ((overlay (make-overlay match-start anchor-end nil nil nil)))
+            (overlay-put overlay 'ai-code-session-image-preview t)
+            (overlay-put overlay 'ai-code-session-image-file file)
+            (overlay-put overlay 'ai-code-session-image-file-signature
+                         (ai-code-session-link--image-preview-file-signature file))
+            (overlay-put overlay 'ai-code-session-image-vertical-margin
+                         vertical-margin)
+            (overlay-put overlay 'ai-code-session-image-link-text link-text)
+            (overlay-put overlay 'ai-code-session-image-display-text display-text)
+            (overlay-put overlay 'after-string
+                         (ai-code-session-link--image-preview-string
+                          image file indent))
+            overlay))))))
 
 (defun ai-code-session-link--apply-properties (start end &optional text help-echo)
   "Apply session link properties from START to END.
@@ -1478,7 +1547,7 @@ MATCH-END is the end of the first-row URL match.  SCAN-END bounds the search."
 ALLOW-LOCAL-PROBING controls local existence checks and image previews."
   (let ((inhibit-read-only t)
         (inhibit-modification-hooks t))
-    (ai-code-session-link--delete-image-preview-overlays start end)
+    (ai-code-session-link--delete-image-preview-overlays start end t)
     (let ((ai-code-session-link--project-files-cache
            (ai-code-session-link--buffer-project-files-cache))
           (ai-code-session-link--resolved-path-cache
@@ -1658,7 +1727,7 @@ visible-window recovery in large terminal scrollback."
   (when (ai-code-session-link--image-preview-enabled-p)
     (let ((inhibit-read-only t)
           (inhibit-modification-hooks t))
-      (ai-code-session-link--delete-image-preview-overlays start end)
+      (ai-code-session-link--delete-image-preview-overlays start end t)
       (save-excursion
         (let ((case-fold-search t)
               (candidate-count 0)

@@ -1254,6 +1254,8 @@
   "Ghostel sessions should preview local image file links."
   (let* ((root (make-temp-file "ai-code-session-image-preview-" t))
          (image-file (expand-file-name "screenshot.png" root))
+         (ai-code-session-link-ghostel-image-preview-vertical-margin 'auto)
+         (line-height 20)
          (created-image nil))
     (unwind-protect
         (progn
@@ -1264,7 +1266,9 @@
                     ((symbol-function 'create-image)
                      (lambda (data &rest args)
                        (setq created-image (cons data args))
-                       (list :image data :args args))))
+                       (list :image data :args args)))
+                    ((symbol-function 'default-line-height)
+                     (lambda () line-height)))
             (with-temp-buffer
               (setq-local ai-code-backends-infra--session-directory root)
               (setq-local ai-code-backends-infra--session-terminal-backend 'ghostel)
@@ -1293,8 +1297,26 @@
                 (should (equal (car created-image) "fake image bytes"))
                 (should-not (equal (car created-image) image-file))
                 (should (nth 2 created-image))
+                (should (equal (cadr (memq :margin created-image))
+                               '(0 . 6)))
                 (should (member :max-width created-image))
-                (should-not (member :max-height created-image))))))
+                (should-not (member :max-height created-image))
+                (setq line-height 30)
+                (ai-code-session-link--linkify-session-region
+                 (point-min) (point-max))
+                (should (equal (cadr (memq :margin created-image))
+                               '(0 . 9)))
+                (setq ai-code-session-link-ghostel-image-preview-vertical-margin
+                      4)
+                (ai-code-session-link--linkify-session-region
+                 (point-min) (point-max))
+                (should (equal (cadr (memq :margin created-image))
+                               '(0 . 4)))
+                (setq ai-code-session-link-ghostel-image-preview-vertical-margin
+                      0)
+                (ai-code-session-link--linkify-session-region
+                 (point-min) (point-max))
+                (should-not (memq :margin created-image))))))
       (when (file-directory-p root)
         (delete-directory root t)))))
 
@@ -1668,6 +1690,52 @@ detection regexp must stitch those rows back together."
                       (overlay-get overlay 'ai-code-session-image-preview))
                     (overlays-in (point-min) (point-max))))
                   1)))))
+      (when (file-directory-p root)
+        (delete-directory root t)))))
+
+(ert-deftest test-ai-code-session-link--linkify-strict-image-preview-region-refresh ()
+  "Repeated scans preserve unchanged previews and refresh changed files."
+  (let* ((root (make-temp-file "ai-code-session-image-rescan-" t))
+         (image-file (expand-file-name "preview.png" root))
+         (create-count 0))
+    (unwind-protect
+        (progn
+          (with-temp-file image-file
+            (insert "fake image bytes"))
+          (cl-letf (((symbol-function 'display-images-p)
+                     (lambda (&optional _display) t))
+                    ((symbol-function 'create-image)
+                     (lambda (data &rest args)
+                       (setq create-count (1+ create-count))
+                       (list :image data :args args))))
+            (with-temp-buffer
+              (setq-local ai-code-backends-infra--session-directory root)
+              (setq-local ai-code-backends-infra--session-terminal-backend
+                          'ghostel)
+              (insert "Saved " image-file "\n")
+              (ai-code-session-link--linkify-strict-image-preview-region
+               (point-min) (point-max))
+              (let ((preview
+                     (cl-find-if
+                      (lambda (overlay)
+                        (overlay-get overlay 'ai-code-session-image-preview))
+                      (overlays-in (point-min) (point-max)))))
+                (should preview)
+                (ai-code-session-link--linkify-strict-image-preview-region
+                 (point-min) (point-max))
+                (should (= create-count 1))
+                (should (eq (overlay-buffer preview) (current-buffer)))
+                (with-temp-file image-file
+                  (insert "updated image bytes with a different size"))
+                (ai-code-session-link--linkify-strict-image-preview-region
+                 (point-min) (point-max))
+                (should (= create-count 2))
+                (should-not (overlay-buffer preview))
+                (should
+                 (cl-find-if
+                  (lambda (overlay)
+                    (overlay-get overlay 'ai-code-session-image-preview))
+                  (overlays-in (point-min) (point-max))))))))
       (when (file-directory-p root)
         (delete-directory root t)))))
 
