@@ -349,6 +349,10 @@ Instead of manually telling the AI what to do after every code change or discuss
 - `ai-code-tdd-cycle`: run a guided TDD flow from the menu, including separate Red, Green, Blue stages or the combined one-prompt flows.
 - `ai-code-build-or-test-project`: run build/test explicitly from `C-c a b` when you want a direct verification step in the middle of the loop.
 - `ai-code-prompt-suffix`: add persistent project rules when needed, so repeated instructions such as response language, coding constraints, or test expectations do not have to be retyped in every prompt.
+- `ai-code-grill-me-enabled`: when non-nil, offer a one-shot clarification step (/"Grill me before acting?"/) immediately before the completed prompt is sent for `ai-code-code-change`, `ai-code-ask-question`, `ai-code-implement-todo`, and `ai-code-send-command`.  When accepted, the AI reads the bundled =prompt/grilling.v1.md= harness and asks targeted clarifying questions before acting, reducing ambiguity in the request.  The harness is adapted from [[https://github.com/mattpocock/skills/blob/main/skills/productivity/grilling/SKILL.md][mattpocock/skills – grilling]].  Disabled by default; enable it with:
+  #+begin_src emacs-lisp
+  (setq ai-code-grill-me-enabled t)
+  #+end_src
 - [[https://github.com/obra/superpowers][obra/superpowers]] pair well with these features.
 
 With the built-in =get_diagnostics= MCP tool, the loop can move further left:
@@ -369,7 +373,7 @@ The benefit is practical:
 - more consistent AI behavior because verification is part of the workflow
 - easier to let the AI continue with the next step after a failed or passing test
 
-This is why features such as `ai-code-auto-test-type`, `ai-code-discussion-auto-follow-up-enabled`, and `ai-code-tdd-cycle` fit the idea of harness engineering: they turn testing and follow-up into part of the system, not an afterthought in each prompt.
+This is why features such as `ai-code-auto-test-type`, `ai-code-discussion-auto-follow-up-enabled`, `ai-code-grill-me-enabled`, and `ai-code-tdd-cycle` fit the idea of harness engineering: they turn testing, clarification, and follow-up into part of the system, not an afterthought in each prompt.
 
 Nit: During using auto test feature, I prefer to turn off the approval request from AI, it will make the whole process more smooth. Eg. for Codex CLI, it is
 
