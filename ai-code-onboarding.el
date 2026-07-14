@@ -8,7 +8,6 @@
 ;;; Code:
 
 (require 'button)
-(require 'ai-code-grill)
 
 (declare-function ai-code--backend-spec "ai-code-backends" (key))
 (declare-function ai-code-ask-question "ai-code-discussion" (arg))
