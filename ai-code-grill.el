@@ -93,10 +93,6 @@ acting."
 
 (ai-code--install-grill-me-advice)
 
-;;;###autoload
-(with-eval-after-load 'ai-code-prompt-mode
-  (require 'ai-code-grill))
-
 (provide 'ai-code-grill)
 
 ;;; ai-code-grill.el ends here
