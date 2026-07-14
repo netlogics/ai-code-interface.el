@@ -72,6 +72,15 @@
                      #'ai-code--with-grill-me-origin)
       (fmakunbound 'ai-code--test-grill-entry))))
 
+(ert-deftest ai-code-grill-errors-when-harness-unreadable ()
+  (let ((ai-code-grill-me-enabled t)
+        (this-command 'ai-code-send-command))
+    (cl-letf (((symbol-function 'y-or-n-p) (lambda (&rest _args) t))
+              ((symbol-function 'ai-code--grill-me-harness-file)
+               (lambda () "/nonexistent/path/grilling.v1.md")))
+      (should-error (ai-code--maybe-add-grill-me-harness "prompt")
+                    :type 'user-error))))
+
 (provide 'test-ai-code-grill)
 
 ;;; test_ai-code-grill.el ends here

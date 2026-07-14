@@ -53,11 +53,11 @@ acting."
 (defun ai-code--grill-me-prompt-path (file-path)
   "Return FILE-PATH formatted for prompt usage."
   (if-let ((git-root (ai-code--git-root)))
-      (let ((git-root-truename
+      (let ((git-root-abs
              (file-name-as-directory (file-truename git-root)))
-            (file-truename (file-truename file-path)))
-        (if (file-in-directory-p file-truename git-root-truename)
-            (file-relative-name file-truename git-root-truename)
+            (file-abs (file-truename file-path)))
+        (if (file-in-directory-p file-abs git-root-abs)
+            (file-relative-name file-abs git-root-abs)
           file-path))
     file-path))
 
