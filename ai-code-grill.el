@@ -93,6 +93,13 @@ acting."
   "Call ORIG-FUN with PROMPT-TEXT after optional grill-me handling."
   (funcall orig-fun (ai-code--maybe-add-grill-me-harness prompt-text)))
 
+(defun ai-code--install-grill-me-command-advice ()
+  "Install origin-preserving advice on available Grill commands."
+  (dolist (command ai-code--grill-me-commands)
+    (when (and (fboundp command)
+               (not (advice-member-p #'ai-code--with-grill-me-origin command)))
+      (advice-add command :around #'ai-code--with-grill-me-origin))))
+
 (defun ai-code--install-grill-me-advice ()
   "Install the optional grill-me advice once."
   (unless (advice-member-p #'ai-code--with-optional-grill-me
@@ -102,6 +109,12 @@ acting."
                 #'ai-code--with-optional-grill-me)))
 
 (ai-code--install-grill-me-advice)
+
+(ai-code--install-grill-me-command-advice)
+
+(dolist (feature '(ai-code-change ai-code-discussion ai-code))
+  (with-eval-after-load feature
+    (ai-code--install-grill-me-command-advice)))
 
 (provide 'ai-code-grill)
 

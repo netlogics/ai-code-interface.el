@@ -49,6 +49,29 @@
          (ai-code--maybe-add-grill-me-harness "prompt")))
       (should asked))))
 
+(ert-deftest ai-code-grill-installs-entry-advice-idempotently ()
+  (let ((ai-code--grill-me-commands '(ai-code--test-grill-entry))
+        (ai-code-grill-me-enabled t)
+        (this-command 'ai-code--test-grill-entry)
+        (ask-count 0))
+    (unwind-protect
+        (progn
+          (fset 'ai-code--test-grill-entry
+                (lambda ()
+                  (setq this-command 'helm-maybe-exit-minibuffer)
+                  (ai-code--maybe-add-grill-me-harness "prompt")))
+          (ai-code--install-grill-me-command-advice)
+          (ai-code--install-grill-me-command-advice)
+          (cl-letf (((symbol-function 'y-or-n-p)
+                     (lambda (&rest _args)
+                       (cl-incf ask-count)
+                       nil)))
+            (funcall (symbol-function 'ai-code--test-grill-entry)))
+          (should (= ask-count 1)))
+      (advice-remove 'ai-code--test-grill-entry
+                     #'ai-code--with-grill-me-origin)
+      (fmakunbound 'ai-code--test-grill-entry))))
+
 (provide 'test-ai-code-grill)
 
 ;;; test_ai-code-grill.el ends here
