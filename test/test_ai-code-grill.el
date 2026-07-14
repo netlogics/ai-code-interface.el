@@ -72,6 +72,26 @@
                      #'ai-code--with-grill-me-origin)
       (fmakunbound 'ai-code--test-grill-entry))))
 
+(ert-deftest ai-code-grill-installs-entry-advice-after-late-command-loading ()
+  (let ((was-fboundp (fboundp 'ai-code-send-command))
+        (original-function (when (fboundp 'ai-code-send-command)
+                             (symbol-function 'ai-code-send-command)))
+        (original-features features)
+        (after-load-alist (copy-tree after-load-alist))
+        (ai-code--grill-me-commands '(ai-code-send-command)))
+    (unwind-protect
+        (progn
+          (setq features (delq 'ai-code (copy-sequence features)))
+          (fset 'ai-code-send-command (lambda (&optional _arg)))
+          (provide 'ai-code)
+          (should (advice-member-p #'ai-code--with-grill-me-origin
+                                   'ai-code-send-command)))
+      (setq features original-features)
+      (advice-remove 'ai-code-send-command #'ai-code--with-grill-me-origin)
+      (if was-fboundp
+          (fset 'ai-code-send-command original-function)
+        (fmakunbound 'ai-code-send-command)))))
+
 (provide 'test-ai-code-grill)
 
 ;;; test_ai-code-grill.el ends here
