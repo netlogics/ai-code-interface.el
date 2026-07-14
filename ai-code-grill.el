@@ -33,6 +33,9 @@ acting."
     ai-code-send-command)
   "Interactive commands that offer the grill-me harness.")
 
+(defvar ai-code--grill-me-origin-command nil
+  "Originating interactive command for the current Grill-enabled request.")
+
 (defun ai-code--grill-me-package-directory ()
   "Return the package installation directory for ai-code."
   (file-name-directory
@@ -69,7 +72,14 @@ acting."
 
 (defun ai-code--grill-me-command-p ()
   "Return non-nil when the active command should offer grill-me."
-  (memq this-command ai-code--grill-me-commands))
+  (memq (or ai-code--grill-me-origin-command this-command)
+        ai-code--grill-me-commands))
+
+(defun ai-code--with-grill-me-origin (orig-fun &rest args)
+  "Call ORIG-FUN with ARGS while preserving the entry command."
+  (let ((ai-code--grill-me-origin-command
+         (or ai-code--grill-me-origin-command this-command)))
+    (apply orig-fun args)))
 
 (defun ai-code--maybe-add-grill-me-harness (prompt-text)
   "Return PROMPT-TEXT, optionally with the grill-me harness reference."

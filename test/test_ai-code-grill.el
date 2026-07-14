@@ -35,6 +35,20 @@
       (should (equal (ai-code--maybe-add-grill-me-harness "prompt")
                      "prompt\nRead @prompt/grilling.v1.md")))))
 
+(ert-deftest ai-code-grill-preserves-origin-across-prompt-editing ()
+  (let ((ai-code-grill-me-enabled t)
+        (this-command 'ai-code-ask-question)
+        asked)
+    (cl-letf (((symbol-function 'y-or-n-p)
+               (lambda (&rest _args)
+                 (setq asked t)
+                 nil)))
+      (ai-code--with-grill-me-origin
+       (lambda ()
+         (setq this-command 'helm-maybe-exit-minibuffer)
+         (ai-code--maybe-add-grill-me-harness "prompt")))
+      (should asked))))
+
 (provide 'test-ai-code-grill)
 
 ;;; test_ai-code-grill.el ends here
