@@ -1,5 +1,12 @@
 ;;; test_ai-code-grill.el --- Tests for ai-code-grill -*- lexical-binding: t; -*-
 
+;; SPDX-License-Identifier: Apache-2.0
+
+;;; Commentary:
+;; Tests for ai-code-grill.
+
+;;; Code:
+
 (require 'ert)
 (require 'cl-lib)
 (require 'ai-code-prompt-mode)
