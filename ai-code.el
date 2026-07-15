@@ -133,7 +133,6 @@
 (require 'ai-code-file)
 (require 'ai-code-doc)
 (require 'ai-code-harness)
-(require 'ai-code-grill)
 (require 'ai-code-ai)
 (require 'ai-code-mcp-server)
 (require 'ai-code-notifications)

@@ -5,6 +5,40 @@
 (require 'ai-code-prompt-mode)
 (require 'ai-code-grill)
 
+(defun ai-code-grill-test--clean-emacs-result (form)
+  "Run FORM in a clean batch Emacs and return its exit code and output."
+  (let* ((emacs (expand-file-name invocation-name invocation-directory))
+         (root (file-name-as-directory
+                (expand-file-name default-directory)))
+         (stubs (expand-file-name "test/stubs" root)))
+    (with-temp-buffer
+      (let ((exit-code
+             (call-process emacs nil (current-buffer) nil
+                           "-Q" "--batch"
+                           "-L" root
+                           "-L" stubs
+                           "--eval" form)))
+        (list exit-code (buffer-string))))))
+
+(ert-deftest ai-code-grill-autoloaded-entry-loads-grill ()
+  "Loading an autoloaded entry module should install Grill advice."
+  (pcase-let
+      ((`(,exit-code ,output)
+        (ai-code-grill-test--clean-emacs-result
+         (concat
+          "(progn "
+          "(setq load-prefer-newer t) "
+          "(load \"ai-code-autoloads.el\" nil nil t) "
+          "(require 'ai-code-change) "
+          "(unless (and (featurep 'ai-code-grill) "
+          "(advice-member-p #'ai-code--with-optional-grill-me "
+          "'ai-code--insert-prompt) "
+          "(advice-member-p #'ai-code--with-grill-me-origin "
+          "'ai-code-code-change)) "
+          "(kill-emacs 1)))"))))
+    (should (equal exit-code 0))
+    (should-not (string-match-p "Error:" output))))
+
 (ert-deftest ai-code-grill-disabled-keeps-prompt ()
   (let ((ai-code-grill-me-enabled nil)
         (this-command 'ai-code-code-change))
