@@ -23,6 +23,21 @@
 (defvar ai-code-use-prompt-suffix)
 (defvar org-roam-directory)
 
+(ert-deftest ai-code-test-direct-command-p-accepts-single-token-command ()
+  "A single-token slash command should use direct command routing."
+  (should (ai-code--direct-command-p "/status")))
+
+(ert-deftest ai-code-test-direct-command-p-rejects-whitespace ()
+  "Slash-prefixed text containing whitespace should be a normal prompt."
+  (dolist (prompt '("/review this file"
+                    "/review\tthis-file"
+                    "/review\nthis-file"))
+    (should-not (ai-code--direct-command-p prompt))))
+
+(ert-deftest ai-code-test-direct-command-p-rejects-normal-prompt ()
+  "Text without a slash prefix should be a normal prompt."
+  (should-not (ai-code--direct-command-p "explain this file")))
+
 ;; Helper macro to set up and tear down the test environment
 (defmacro ai-code-with-test-repo (&rest body)
   "Set up a temporary git repository environment for testing.

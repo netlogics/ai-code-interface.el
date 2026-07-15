@@ -534,14 +534,18 @@ GIT-ROOT-TRUENAME is the normalized Git root."
              (delete-char -1)  ; Remove the '#' we just typed
             (insert "#" symbol))))))))
 
+(defun ai-code--direct-command-p (prompt-text)
+  "Return non-nil when PROMPT-TEXT is a single-token slash command."
+  (and (string-prefix-p "/" prompt-text)
+       (not (string-match-p "[[:space:]]" prompt-text))))
+
 (defun ai-code--insert-prompt (prompt-text)
   "Preprocess and insert PROMPT-TEXT into the AI prompt file.
 If PROMPT-TEXT is a command (starts with /), execute it directly instead."
   (let ((processed-prompt (if ai-code-prompt-preprocess-filepaths
                               (ai-code--preprocess-prompt-text prompt-text)
                             prompt-text)))
-    (if (and (string-prefix-p "/" processed-prompt)
-             (not (string-match-p " " processed-prompt)))
+    (if (ai-code--direct-command-p processed-prompt)
         (ai-code--execute-command processed-prompt)
       (let* ((append-summary-p (and (derived-mode-p 'org-mode)
                                     (ignore-errors (save-excursion (org-back-to-heading t) t))

@@ -2,6 +2,7 @@
 
 (require 'ert)
 (require 'cl-lib)
+(require 'ai-code-prompt-mode)
 (require 'ai-code-grill)
 
 (ert-deftest ai-code-grill-disabled-keeps-prompt ()
@@ -34,6 +35,28 @@
                (lambda () "Read @prompt/grilling.v1.md")))
       (should (equal (ai-code--maybe-add-grill-me-harness "prompt")
                      "prompt\nRead @prompt/grilling.v1.md")))))
+
+(ert-deftest ai-code-grill-direct-command-bypasses-question ()
+  "A direct slash command should bypass Grill unchanged."
+  (let ((ai-code-grill-me-enabled t)
+        (this-command 'ai-code-send-command))
+    (cl-letf (((symbol-function 'y-or-n-p)
+               (lambda (&rest _args)
+                 (ert-fail "Direct commands should not ask about Grill"))))
+      (should (equal (ai-code--maybe-add-grill-me-harness "/status")
+                     "/status")))))
+
+(ert-deftest ai-code-grill-whitespace-slash-prompt-remains-eligible ()
+  "A slash-prefixed prompt with whitespace should remain Grill-eligible."
+  (let ((ai-code-grill-me-enabled t)
+        (this-command 'ai-code-send-command))
+    (cl-letf (((symbol-function 'y-or-n-p) (lambda (&rest _args) t))
+              ((symbol-function 'ai-code--grill-me-reference-suffix)
+               (lambda () "Read @prompt/grilling.v1.md")))
+      (should
+       (equal
+        (ai-code--maybe-add-grill-me-harness "/review this file")
+        "/review this file\nRead @prompt/grilling.v1.md")))))
 
 (ert-deftest ai-code-grill-preserves-origin-across-prompt-editing ()
   (let ((ai-code-grill-me-enabled t)

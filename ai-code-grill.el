@@ -13,6 +13,8 @@
 (require 'subr-x)
 
 (declare-function ai-code--git-root "ai-code-utils" (&optional dir))
+(declare-function ai-code--direct-command-p "ai-code-prompt-mode"
+                  (prompt-text))
 (declare-function ai-code--insert-prompt "ai-code-prompt-mode" (prompt-text))
 
 ;;;###autoload
@@ -83,7 +85,8 @@ acting."
 
 (defun ai-code--maybe-add-grill-me-harness (prompt-text)
   "Return PROMPT-TEXT, optionally with the grill-me harness reference."
-  (if (and ai-code-grill-me-enabled
+  (if (and (not (ai-code--direct-command-p prompt-text))
+           ai-code-grill-me-enabled
            (ai-code--grill-me-command-p)
            (y-or-n-p "Grill me before acting? "))
       (concat prompt-text "\n" (ai-code--grill-me-reference-suffix))
