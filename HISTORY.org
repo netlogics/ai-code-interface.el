@@ -2,6 +2,7 @@
 * Release history
 
 ** Main branch change
+- Add lightweight grill-me prompt flow
 - Fix Ghostel input jitter caused by inline image anchoring, by fxa
 - Support selected region as context in TDD write-test stage
 
