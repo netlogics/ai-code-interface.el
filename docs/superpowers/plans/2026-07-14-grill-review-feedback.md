@@ -80,9 +80,15 @@ Then add these tests:
 Run:
 
 ```bash
-emacs -batch -L . -l ert -l ./ai-code-grill.el \
+emacs -batch -L . -l test/test_00-bootstrap.el -l ert \
+  -l ./ai-code-grill.el \
   -l test/test_ai-code-grill.el -l test/test_ai-code-prompt-mode.el \
-  --eval "(ert-run-tests-batch-and-exit \"ai-code-.*direct-command\\|ai-code-grill-whitespace-slash-prompt\")"
+  --eval "(ert-run-tests-batch-and-exit
+           '(or ai-code-test-direct-command-p-accepts-single-token-command
+                ai-code-test-direct-command-p-rejects-whitespace
+                ai-code-test-direct-command-p-rejects-normal-prompt
+                ai-code-grill-direct-command-bypasses-question
+                ai-code-grill-whitespace-slash-prompt-remains-eligible))"
 ```
 
 Expected: failures because `ai-code--direct-command-p` is undefined and the
@@ -126,7 +132,8 @@ Add the direct-command exclusion as the first condition in
 - [ ] **Step 5: Run focused suites and verify GREEN**
 
 ```bash
-emacs -batch -L . -l ert -l ./ai-code-prompt-mode.el \
+emacs -batch -L . -l test/test_00-bootstrap.el -l ert \
+  -l ./ai-code-prompt-mode.el \
   -l ./ai-code-grill.el -l test/test_ai-code-prompt-mode.el \
   -l test/test_ai-code-grill.el -f ert-run-tests-batch-and-exit
 ```
@@ -191,7 +198,8 @@ Add this helper and test to `test/test_ai-code-grill.el`:
 - [ ] **Step 2: Run the integration test and verify RED**
 
 ```bash
-emacs -batch -L . -l ert -l ./ai-code-grill.el \
+emacs -batch -L . -l test/test_00-bootstrap.el -l ert \
+  -l ./ai-code-grill.el \
   -l test/test_ai-code-grill.el \
   --eval "(ert-run-tests-batch-and-exit 'ai-code-grill-autoloaded-entry-loads-grill)"
 ```
@@ -218,7 +226,8 @@ Add this immediately before `(provide 'ai-code-prompt-mode)` in
 - [ ] **Step 4: Run the integration and focused tests and verify GREEN**
 
 ```bash
-emacs -batch -L . -l ert -l ./ai-code-prompt-mode.el \
+emacs -batch -L . -l test/test_00-bootstrap.el -l ert \
+  -l ./ai-code-prompt-mode.el \
   -l test/test_ai-code-prompt-mode.el -l test/test_ai-code-grill.el \
   -f ert-run-tests-batch-and-exit
 ```
@@ -257,7 +266,8 @@ Insert after the file header in `test/test_ai-code-grill.el`:
 - [ ] **Step 2: Run focused tests**
 
 ```bash
-emacs -batch -L . -l ert -l ./ai-code-prompt-mode.el \
+emacs -batch -L . -l test/test_00-bootstrap.el -l ert \
+  -l ./ai-code-prompt-mode.el \
   -l test/test_ai-code-prompt-mode.el -l test/test_ai-code-grill.el \
   -f ert-run-tests-batch-and-exit
 ```
@@ -278,12 +288,12 @@ failures; no new Grill or prompt-mode failures.
 - [ ] **Step 4: Byte-compile touched production files**
 
 ```bash
-emacs -Q --batch -L . \
+emacs -Q --batch -L . -L test/stubs \
   --eval "(progn
              (setq byte-compile-dest-file-function
                    (lambda (file)
                      (expand-file-name
-                      (file-name-nondirectory (byte-compile-dest-file file))
+                      (concat (file-name-base file) \".elc\")
                       temporary-file-directory)))
              (byte-compile-file \"ai-code-prompt-mode.el\")
              (byte-compile-file \"ai-code-grill.el\")
@@ -297,9 +307,8 @@ and report the batch failure rather than treating it as a pass.
 - [ ] **Step 5: Run checkdoc**
 
 ```bash
-emacs -Q --batch -L . \
+emacs -Q --batch -L . -L test/stubs -l checkdoc \
   --eval "(progn
-             (require 'checkdoc)
              (checkdoc-file \"ai-code-prompt-mode.el\")
              (checkdoc-file \"ai-code-grill.el\")
              (checkdoc-file \"ai-code.el\")
