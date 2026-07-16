@@ -456,6 +456,12 @@ Send-time routing uses this result for test and discussion follow-up suffixes."
 (add-hook 'ai-code-prompt-suffix-functions
           #'ai-code--discussion-follow-up-suffix-provider 40)
 
+;; Remove the send-time advice installed by pre-provider releases.
+(when (advice-member-p 'ai-code--with-auto-test-suffix-for-send
+                       'ai-code--write-prompt-to-file-and-send)
+  (advice-remove 'ai-code--write-prompt-to-file-and-send
+                 'ai-code--with-auto-test-suffix-for-send))
+
 (defun ai-code--test-after-code-change--set (symbol value)
   "Set SYMBOL to VALUE and update related suffix behavior."
   (set-default symbol value)

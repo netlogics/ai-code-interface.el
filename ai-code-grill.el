@@ -88,6 +88,12 @@ acting."
 (add-hook 'ai-code-prompt-suffix-functions
           #'ai-code--grill-me-suffix-provider 20)
 
+;; Remove the prompt-transform advice installed by pre-provider releases.
+(when (advice-member-p 'ai-code--with-optional-grill-me
+                       'ai-code--insert-prompt)
+  (advice-remove 'ai-code--insert-prompt
+                 'ai-code--with-optional-grill-me))
+
 (defun ai-code--install-grill-me-command-advice ()
   "Install origin-preserving advice on available Grill commands."
   (dolist (command ai-code--grill-me-commands)

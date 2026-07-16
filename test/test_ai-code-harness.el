@@ -588,6 +588,29 @@
       (should (equal (ai-code--apply-prompt-suffixes "Prompt")
                      "Prompt\nCUSTOM\nGRILL\nAUTO\nFOLLOW")))))
 
+(ert-deftest ai-code-test-harness-reload-removes-legacy-send-advice ()
+  "Reloading the harness should remove its legacy send-time advice."
+  (let ((was-fboundp (fboundp 'ai-code--with-auto-test-suffix-for-send))
+        (original-function
+         (when (fboundp 'ai-code--with-auto-test-suffix-for-send)
+           (symbol-function 'ai-code--with-auto-test-suffix-for-send))))
+    (unwind-protect
+        (progn
+          (fset 'ai-code--with-auto-test-suffix-for-send
+                (lambda (orig-fun prompt-text)
+                  (funcall orig-fun prompt-text)))
+          (advice-add 'ai-code--write-prompt-to-file-and-send
+                      :around #'ai-code--with-auto-test-suffix-for-send)
+          (load (locate-library "ai-code-harness") nil nil t)
+          (should-not
+           (advice-member-p #'ai-code--with-auto-test-suffix-for-send
+                            'ai-code--write-prompt-to-file-and-send)))
+      (advice-remove 'ai-code--write-prompt-to-file-and-send
+                     #'ai-code--with-auto-test-suffix-for-send)
+      (if was-fboundp
+          (fset 'ai-code--with-auto-test-suffix-for-send original-function)
+        (fmakunbound 'ai-code--with-auto-test-suffix-for-send)))))
+
 (ert-deftest ai-code-test-use-prompt-suffix-does-not-disable-grill ()
   "The legacy suffix switch should not become a Grill master switch."
   (let ((ai-code-use-prompt-suffix nil)

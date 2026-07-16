@@ -54,6 +54,29 @@
     (should (equal exit-code 0))
     (should-not (string-match-p "Error:" output))))
 
+(ert-deftest ai-code-grill-reload-removes-legacy-prompt-advice ()
+  "Reloading Grill should remove its legacy prompt-transform advice."
+  (let ((was-fboundp (fboundp 'ai-code--with-optional-grill-me))
+        (original-function
+         (when (fboundp 'ai-code--with-optional-grill-me)
+           (symbol-function 'ai-code--with-optional-grill-me))))
+    (unwind-protect
+        (progn
+          (fset 'ai-code--with-optional-grill-me
+                (lambda (orig-fun prompt-text)
+                  (funcall orig-fun prompt-text)))
+          (advice-add 'ai-code--insert-prompt
+                      :around #'ai-code--with-optional-grill-me)
+          (load (locate-library "ai-code-grill") nil nil t)
+          (should-not
+           (advice-member-p #'ai-code--with-optional-grill-me
+                            'ai-code--insert-prompt)))
+      (advice-remove 'ai-code--insert-prompt
+                     #'ai-code--with-optional-grill-me)
+      (if was-fboundp
+          (fset 'ai-code--with-optional-grill-me original-function)
+        (fmakunbound 'ai-code--with-optional-grill-me)))))
+
 (ert-deftest ai-code-grill-disabled-keeps-prompt ()
   (let ((ai-code-grill-me-enabled nil)
         (context (ai-code-grill-test--context 'ai-code-code-change)))
