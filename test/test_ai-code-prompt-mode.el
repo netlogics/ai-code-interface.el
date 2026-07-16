@@ -75,7 +75,7 @@
 (ert-deftest ai-code-test-prompt-suffix-provider-error-aborts-send ()
   "A failing suffix provider should stop the send operation."
   (let ((ai-code-prompt-suffix-functions
-         (list (lambda (_context) (error "broken provider"))))
+         (list (lambda (_context) (error "Broken provider"))))
         (ai-code-prompt-suffix nil)
         (ai-code-auto-test-type nil)
         (ai-code-auto-test-suffix nil)

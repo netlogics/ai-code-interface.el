@@ -88,7 +88,7 @@ non-empty string or nil.  Provider errors abort the send."
         (cond
          ((null suffix) nil)
          ((not (stringp suffix))
-          (error "returned %S instead of a string or nil" suffix))
+          (error "Returned %S instead of a string or nil" suffix))
          ((string-empty-p suffix) nil)
          (t suffix)))
     (error
