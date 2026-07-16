@@ -27,8 +27,14 @@
                            "--eval" form)))
         (list exit-code (buffer-string))))))
 
+(defun ai-code-grill-test--context (origin-command)
+  "Return a Grill prompt context for ORIGIN-COMMAND."
+  (ai-code--make-prompt-context
+   :prompt-text "prompt"
+   :origin-command origin-command))
+
 (ert-deftest ai-code-grill-autoloaded-entry-loads-grill ()
-  "Loading an autoloaded entry module should install Grill advice."
+  "Loading an autoloaded entry module should install the Grill provider."
   (pcase-let
       ((`(,exit-code ,output)
         (ai-code-grill-test--clean-emacs-result
@@ -38,8 +44,10 @@
           "(load \"ai-code-autoloads.el\" nil nil t) "
           "(require 'ai-code-change) "
           "(unless (and (featurep 'ai-code-grill) "
-          "(advice-member-p #'ai-code--with-optional-grill-me "
-          "'ai-code--insert-prompt) "
+          "(memq #'ai-code--grill-me-suffix-provider "
+          "ai-code-prompt-suffix-functions) "
+          "(advice-member-p #'ai-code--filter-prompt-suffix-args "
+          "'ai-code--write-prompt-to-file-and-send) "
           "(advice-member-p #'ai-code--with-grill-me-origin "
           "'ai-code-code-change)) "
           "(kill-emacs 1)))"))))
@@ -48,56 +56,44 @@
 
 (ert-deftest ai-code-grill-disabled-keeps-prompt ()
   (let ((ai-code-grill-me-enabled nil)
-        (this-command 'ai-code-code-change))
-    (should (equal (ai-code--maybe-add-grill-me-harness "prompt")
-                   "prompt"))))
+        (context (ai-code-grill-test--context 'ai-code-code-change)))
+    (should-not (ai-code--grill-me-suffix-provider context))))
 
 (ert-deftest ai-code-grill-ignores-other-commands ()
   (let ((ai-code-grill-me-enabled t)
-        (this-command 'ai-code-explain))
+        (context (ai-code-grill-test--context 'ai-code-explain)))
     (cl-letf (((symbol-function 'y-or-n-p)
                (lambda (&rest _args)
                  (ert-fail "Should not ask for unrelated commands"))))
-      (should (equal (ai-code--maybe-add-grill-me-harness "prompt")
-                     "prompt")))))
+      (should-not (ai-code--grill-me-suffix-provider context)))))
 
 (ert-deftest ai-code-grill-declined-keeps-prompt ()
   (let ((ai-code-grill-me-enabled t)
-        (this-command 'ai-code-ask-question))
+        (context (ai-code-grill-test--context 'ai-code-ask-question)))
     (cl-letf (((symbol-function 'y-or-n-p) (lambda (&rest _args) nil)))
-      (should (equal (ai-code--maybe-add-grill-me-harness "prompt")
-                     "prompt")))))
+      (should-not (ai-code--grill-me-suffix-provider context)))))
 
-(ert-deftest ai-code-grill-accepted-appends-reference ()
+(ert-deftest ai-code-grill-accepted-returns-reference ()
   (let ((ai-code-grill-me-enabled t)
-        (this-command 'ai-code-send-command))
+        (context (ai-code-grill-test--context 'ai-code-send-command)))
     (cl-letf (((symbol-function 'y-or-n-p) (lambda (&rest _args) t))
               ((symbol-function 'ai-code--grill-me-reference-suffix)
                (lambda () "Read @prompt/grilling.v1.md")))
-      (should (equal (ai-code--maybe-add-grill-me-harness "prompt")
-                     "prompt\nRead @prompt/grilling.v1.md")))))
+      (should (equal (ai-code--grill-me-suffix-provider context)
+                     "Read @prompt/grilling.v1.md")))))
 
 (ert-deftest ai-code-grill-direct-command-bypasses-question ()
   "A direct slash command should bypass Grill unchanged."
   (let ((ai-code-grill-me-enabled t)
-        (this-command 'ai-code-send-command))
+        (this-command 'ai-code-send-command)
+        executed-command)
     (cl-letf (((symbol-function 'y-or-n-p)
                (lambda (&rest _args)
-                 (ert-fail "Direct commands should not ask about Grill"))))
-      (should (equal (ai-code--maybe-add-grill-me-harness "/status")
-                     "/status")))))
-
-(ert-deftest ai-code-grill-whitespace-slash-prompt-remains-eligible ()
-  "A slash-prefixed prompt with whitespace should remain Grill-eligible."
-  (let ((ai-code-grill-me-enabled t)
-        (this-command 'ai-code-send-command))
-    (cl-letf (((symbol-function 'y-or-n-p) (lambda (&rest _args) t))
-              ((symbol-function 'ai-code--grill-me-reference-suffix)
-               (lambda () "Read @prompt/grilling.v1.md")))
-      (should
-       (equal
-        (ai-code--maybe-add-grill-me-harness "/review this file")
-        "/review this file\nRead @prompt/grilling.v1.md")))))
+                 (ert-fail "Direct commands should not ask about Grill")))
+              ((symbol-function 'ai-code--execute-command)
+               (lambda (command) (setq executed-command command))))
+      (ai-code--insert-prompt "/status")
+      (should (equal executed-command "/status")))))
 
 (ert-deftest ai-code-grill-preserves-origin-across-prompt-editing ()
   (let ((ai-code-grill-me-enabled t)
@@ -110,7 +106,8 @@
       (ai-code--with-grill-me-origin
        (lambda ()
          (setq this-command 'helm-maybe-exit-minibuffer)
-         (ai-code--maybe-add-grill-me-harness "prompt")))
+         (ai-code--grill-me-suffix-provider
+          (ai-code--prompt-context-for-text "prompt"))))
       (should asked))))
 
 (ert-deftest ai-code-grill-installs-entry-advice-idempotently ()
@@ -123,7 +120,8 @@
           (fset 'ai-code--test-grill-entry
                 (lambda ()
                   (setq this-command 'helm-maybe-exit-minibuffer)
-                  (ai-code--maybe-add-grill-me-harness "prompt")))
+                  (ai-code--grill-me-suffix-provider
+                   (ai-code--prompt-context-for-text "prompt"))))
           (ai-code--install-grill-me-command-advice)
           (ai-code--install-grill-me-command-advice)
           (cl-letf (((symbol-function 'y-or-n-p)

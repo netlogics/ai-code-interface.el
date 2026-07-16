@@ -5,7 +5,7 @@
 ;; SPDX-License-Identifier: Apache-2.0
 
 ;;; Commentary:
-;; Offer an optional one-question-at-a-time clarification harness for the main
+;; Provide an optional one-question-at-a-time clarification suffix for the main
 ;; prompt entry commands before their completed prompt is sent to an AI backend.
 
 ;;; Code:
@@ -13,9 +13,11 @@
 (require 'subr-x)
 
 (declare-function ai-code--git-root "ai-code-utils" (&optional dir))
-(declare-function ai-code--direct-command-p "ai-code-prompt-mode"
-                  (prompt-text))
-(declare-function ai-code--insert-prompt "ai-code-prompt-mode" (prompt-text))
+(declare-function ai-code-prompt-context-origin-command
+                  "ai-code-prompt-mode" (context))
+
+(defvar ai-code--prompt-origin-command)
+(defvar ai-code-prompt-suffix-functions)
 
 ;;;###autoload
 (defcustom ai-code-grill-me-enabled nil
@@ -34,9 +36,6 @@ acting."
     ai-code-implement-todo
     ai-code-send-command)
   "Interactive commands that offer the grill-me harness.")
-
-(defvar ai-code--grill-me-origin-command nil
-  "Originating interactive command for the current Grill-enabled request.")
 
 (defun ai-code--grill-me-package-directory ()
   "Return the package installation directory for ai-code."
@@ -72,29 +71,22 @@ acting."
      "Read the local harness file: @%s. Use its instructions for this request. Apply them without repeating their full contents."
      (ai-code--grill-me-prompt-path file-path))))
 
-(defun ai-code--grill-me-command-p ()
-  "Return non-nil when the active command should offer grill-me."
-  (memq (or ai-code--grill-me-origin-command this-command)
-        ai-code--grill-me-commands))
-
 (defun ai-code--with-grill-me-origin (orig-fun &rest args)
   "Call ORIG-FUN with ARGS while preserving the entry command."
-  (let ((ai-code--grill-me-origin-command
-         (or ai-code--grill-me-origin-command this-command)))
+  (let ((ai-code--prompt-origin-command
+         (or ai-code--prompt-origin-command this-command)))
     (apply orig-fun args)))
 
-(defun ai-code--maybe-add-grill-me-harness (prompt-text)
-  "Return PROMPT-TEXT, optionally with the grill-me harness reference."
-  (if (and (not (ai-code--direct-command-p prompt-text))
-           ai-code-grill-me-enabled
-           (ai-code--grill-me-command-p)
-           (y-or-n-p "Grill me before acting? "))
-      (concat prompt-text "\n" (ai-code--grill-me-reference-suffix))
-    prompt-text))
+(defun ai-code--grill-me-suffix-provider (context)
+  "Return the optional Grill suffix for prompt CONTEXT."
+  (when (and ai-code-grill-me-enabled
+             (memq (ai-code-prompt-context-origin-command context)
+                   ai-code--grill-me-commands)
+             (y-or-n-p "Grill me before acting? "))
+    (ai-code--grill-me-reference-suffix)))
 
-(defun ai-code--with-optional-grill-me (orig-fun prompt-text)
-  "Call ORIG-FUN with PROMPT-TEXT after optional grill-me handling."
-  (funcall orig-fun (ai-code--maybe-add-grill-me-harness prompt-text)))
+(add-hook 'ai-code-prompt-suffix-functions
+          #'ai-code--grill-me-suffix-provider 20)
 
 (defun ai-code--install-grill-me-command-advice ()
   "Install origin-preserving advice on available Grill commands."
@@ -102,16 +94,6 @@ acting."
     (when (and (fboundp command)
                (not (advice-member-p #'ai-code--with-grill-me-origin command)))
       (advice-add command :around #'ai-code--with-grill-me-origin))))
-
-(defun ai-code--install-grill-me-advice ()
-  "Install the optional grill-me advice once."
-  (unless (advice-member-p #'ai-code--with-optional-grill-me
-                           'ai-code--insert-prompt)
-    (advice-add 'ai-code--insert-prompt
-                :around
-                #'ai-code--with-optional-grill-me)))
-
-(ai-code--install-grill-me-advice)
 
 (ai-code--install-grill-me-command-advice)
 
