@@ -20,9 +20,15 @@
 
 (declare-function ai-code--git-root "ai-code-utils" (&optional dir))
 (declare-function ai-code-call-gptel-sync "ai-code-prompt-mode" (question))
+(declare-function ai-code-prompt-context-memoize
+                  "ai-code-prompt-mode" (context key producer))
+(declare-function ai-code-prompt-context-prompt-text
+                  "ai-code-prompt-mode" (context))
 
 (defvar ai-code-mcp-agent-enabled-backends)
+(defvar ai-code-prompt-suffix-functions)
 (defvar ai-code-selected-backend)
+(defvar ai-code-use-prompt-suffix)
 
 ;;;; Auto-Test Harness: Content and Cache
 
@@ -414,24 +420,41 @@ Send-time routing uses this result for test and discussion follow-up suffixes."
                  ai-code-discussion-auto-follow-up-enabled))
     (ai-code--classify-prompt-code-change prompt-text)))
 
-;;;; Send-Time Routing: Advice and Setters
+;;;; Send-Time Routing: Providers and Setters
 
-(defun ai-code--with-auto-test-suffix-for-send (orig-fun prompt-text)
-  "Resolve and bind send-time suffixes before calling ORIG-FUN with PROMPT-TEXT."
-  (let* ((classification (ai-code--classify-prompt-for-send prompt-text))
-         (ai-code-auto-test-suffix
-          (ai-code--resolve-auto-test-suffix-for-send
-           prompt-text classification))
-         (ai-code-discussion-auto-follow-up-suffix
-          (ai-code--resolve-auto-follow-up-suffix-for-send
-           prompt-text classification)))
-    (funcall orig-fun prompt-text)))
+(defun ai-code--prompt-context-classification (context)
+  "Return the shared code-change classification for prompt CONTEXT."
+  (ai-code-prompt-context-memoize
+   context
+   'code-change-classification
+   (lambda ()
+     (ai-code--classify-prompt-for-send
+      (ai-code-prompt-context-prompt-text context)))))
 
-(unless (advice-member-p #'ai-code--with-auto-test-suffix-for-send
-                         'ai-code--write-prompt-to-file-and-send)
-  (advice-add 'ai-code--write-prompt-to-file-and-send
-              :around
-              #'ai-code--with-auto-test-suffix-for-send))
+(defun ai-code--resolve-suffix-for-context (context resolver)
+  "Call RESOLVER with the prompt and shared classification from CONTEXT."
+  (funcall resolver
+           (ai-code-prompt-context-prompt-text context)
+           (ai-code--prompt-context-classification context)))
+
+(defun ai-code--auto-test-suffix-provider (context)
+  "Return the send-time auto-test suffix for prompt CONTEXT."
+  (when (and (bound-and-true-p ai-code-use-prompt-suffix)
+             ai-code-auto-test-type)
+    (ai-code--resolve-suffix-for-context
+     context #'ai-code--resolve-auto-test-suffix-for-send)))
+
+(defun ai-code--discussion-follow-up-suffix-provider (context)
+  "Return the send-time discussion follow-up suffix for prompt CONTEXT."
+  (when (and (bound-and-true-p ai-code-use-prompt-suffix)
+             ai-code-discussion-auto-follow-up-enabled)
+    (ai-code--resolve-suffix-for-context
+     context #'ai-code--resolve-auto-follow-up-suffix-for-send)))
+
+(add-hook 'ai-code-prompt-suffix-functions
+          #'ai-code--auto-test-suffix-provider 30)
+(add-hook 'ai-code-prompt-suffix-functions
+          #'ai-code--discussion-follow-up-suffix-provider 40)
 
 (defun ai-code--test-after-code-change--set (symbol value)
   "Set SYMBOL to VALUE and update related suffix behavior."

@@ -62,7 +62,9 @@
 
 (ert-deftest ai-code-test-custom-prompt-suffix-provider-respects-switch ()
   "The custom suffix provider should honor the legacy suffix switch."
-  (let ((ai-code-use-prompt-suffix t)
+  (let ((ai-code-prompt-suffix-functions
+         '(ai-code--custom-prompt-suffix-provider))
+        (ai-code-use-prompt-suffix t)
         (ai-code-prompt-suffix "CUSTOM"))
     (should (equal (ai-code--apply-prompt-suffixes "Prompt")
                    "Prompt\nCUSTOM"))
