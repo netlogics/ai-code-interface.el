@@ -226,9 +226,7 @@
                (lambda () 42))
               ((symbol-function 'buffer-substring-no-properties)
                (lambda (_beg _end)
-                 (if t
-                     "(define-key test-map (kbd \"C-c x\") #'broken-command)"
-                   nil)))
+                 "(define-key test-map (kbd \"C-c x\") #'broken-command)"))
               ((symbol-function 'ai-code--get-region-location-info)
                (lambda (_beg _end)
                  "ai-code.el#L10-L11"))
