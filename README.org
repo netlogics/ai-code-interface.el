@@ -527,7 +527,9 @@ To transfer development work between different AI coding backends (e.g., from Co
      The resume command adds =--continue= automatically.
 
 **** Open Interpreter CLI setup
-     [[https://github.com/openinterpreter/openinterpreter][Open Interpreter CLI]] is treated as a Codex-compatible CLI. Ensure the `open-interpreter` executable is on your PATH.
+     [[https://github.com/openinterpreter/openinterpreter][Open Interpreter CLI]] is treated as a Codex-compatible CLI. It can be installed with:
+     =curl -fsSL https://www.openinterpreter.com/install | sh=
+     Ensure the `open-interpreter` executable is on your PATH.
      Customize `ai-code-open-interpreter-cli-program` or `ai-code-open-interpreter-cli-program-switches` if needed.
      Then select the backend:
      #+begin_src emacs-lisp
