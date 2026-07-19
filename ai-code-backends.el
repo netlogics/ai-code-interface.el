@@ -21,6 +21,8 @@
 
 (declare-function claude-code--do-send-command "claude-code" (cmd))
 (declare-function claude-code--term-send-string "claude-code" (backend string))
+(declare-function claude-code-ide-mcp--get-session-for-project "claude-code-ide-mcp" (project-dir))
+(declare-function claude-code-ide-mcp-session-client "claude-code-ide-mcp" (session))
 (declare-function ai-code--validate-git-repository "ai-code-git" ())
 (declare-function ai-code--git-root "ai-code-utils" (&optional dir))
 (declare-function ai-code-onboarding-show-backend-switch-hint "ai-code-onboarding" ())
@@ -30,6 +32,8 @@
 (defvar ai-code--cli-resume-fn #'ai-code--unsupported-resume)
 (defvar ai-code--cli-switch-fn #'ai-code--unsupported-switch-to-buffer)
 (defvar ai-code--cli-send-fn #'ai-code--unsupported-send-command)
+(defvar ai-code--cli-ready-fn nil
+  "Predicate (DIR) -> bool for session readiness, or nil for always-ready backends.")
 
 (defvar ai-code--repo-backend-alist nil
   "Alist of (GIT-ROOT . BACKEND) to keep backend affinity per repository.")
@@ -160,6 +164,19 @@ Argument ARG is passed to the backend's switch function."
     (if arg
         (funcall ai-code--cli-switch-fn arg)
       (funcall ai-code--cli-switch-fn))))
+
+(defun ai-code--claude-code-ide-session-ready-p (dir)
+  "Non-nil when the claude-code-ide session for DIR has a live MCP connection."
+  (when-let ((session (claude-code-ide-mcp--get-session-for-project dir)))
+    (claude-code-ide-mcp-session-client session)))
+
+;;;###autoload
+(defun ai-code-cli-session-ready-p (dir)
+  "Non-nil when the active backend's session in DIR is ready to accept input.
+Backends that do not declare a :ready predicate are considered always ready."
+  (if ai-code--cli-ready-fn
+      (funcall ai-code--cli-ready-fn dir)
+    t))
 
 ;;;###autoload
 (defun ai-code-cli-send-command (&optional command)
@@ -392,6 +409,7 @@ so the CLI itself handles the installation details."
      :switch  claude-code-ide-switch-to-buffer
      :send    claude-code-ide-send-prompt
      :resume  claude-code-ide-resume
+     :ready   ai-code--claude-code-ide-session-ready-p
      :config  "~/.claude.json"
      :agent-file "CLAUDE.md"
      :upgrade "npm install -g @anthropic-ai/claude-code@latest"
@@ -474,6 +492,7 @@ Sets backend dispatch functions and updates `ai-code-cli'."
            (switch (plist-get plist :switch))
            (send   (plist-get plist :send))
            (resume (plist-get plist :resume))
+           (ready  (plist-get plist :ready))
            (cli    (plist-get plist :cli)))
       ;; If the declared feature is not available after require,
       ;; inform user to install it.
@@ -493,7 +512,8 @@ Sets backend dispatch functions and updates `ai-code-cli'."
         (user-error
          "Backend '%s' declares resume function '%s' but it is not callable"
          label (symbol-name resume)))
-      (setq ai-code--cli-start-fn start
+      (setq ai-code--cli-ready-fn ready
+            ai-code--cli-start-fn start
             ai-code--cli-switch-fn switch
             ai-code--cli-send-fn send
             ai-code--cli-resume-fn (if resume

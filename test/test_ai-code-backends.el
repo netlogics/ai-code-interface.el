@@ -60,6 +60,7 @@
          (saved-switch ai-code--cli-switch-fn)
          (saved-send ai-code--cli-send-fn)
          (saved-resume ai-code--cli-resume-fn)
+         (saved-ready ai-code--cli-ready-fn)
          (saved-backend ai-code-selected-backend)
          (saved-cli (and (boundp 'ai-code-cli) ai-code-cli))
          (resume-arg nil))
@@ -80,6 +81,7 @@
               ai-code--cli-switch-fn saved-switch
               ai-code--cli-send-fn saved-send
               ai-code--cli-resume-fn saved-resume
+              ai-code--cli-ready-fn saved-ready
               ai-code-selected-backend saved-backend
               ai-code-cli saved-cli)))))
 
@@ -97,6 +99,7 @@
          (saved-switch ai-code--cli-switch-fn)
          (saved-send ai-code--cli-send-fn)
          (saved-resume ai-code--cli-resume-fn)
+         (saved-ready ai-code--cli-ready-fn)
          (saved-backend ai-code-selected-backend)
          (saved-cli (and (boundp 'ai-code-cli) ai-code-cli))
          (resume-called nil))
@@ -116,6 +119,7 @@
               ai-code--cli-switch-fn saved-switch
               ai-code--cli-send-fn saved-send
               ai-code--cli-resume-fn saved-resume
+              ai-code--cli-ready-fn saved-ready
               ai-code-selected-backend saved-backend
               ai-code-cli saved-cli)))))
 
@@ -335,6 +339,7 @@
          (saved-switch ai-code--cli-switch-fn)
          (saved-send ai-code--cli-send-fn)
          (saved-resume ai-code--cli-resume-fn)
+         (saved-ready ai-code--cli-ready-fn)
          (saved-backend ai-code-selected-backend)
          (saved-cli (and (boundp 'ai-code-cli) ai-code-cli))
          (ai-code-backends '((test-backend
@@ -359,6 +364,7 @@
               ai-code--cli-switch-fn saved-switch
               ai-code--cli-send-fn saved-send
               ai-code--cli-resume-fn saved-resume
+              ai-code--cli-ready-fn saved-ready
               ai-code-selected-backend saved-backend
               ai-code-cli saved-cli)))))
 
@@ -404,6 +410,101 @@
   (let ((spec (ai-code--backend-spec 'claude-code)))
     (should spec)
     (should-not (plist-get (cdr spec) :install-skills))))
+
+(ert-deftest ai-code-test-session-ready-p-returns-t-without-ready-fn ()
+  "Backends without :ready are always considered ready."
+  (let ((ai-code--cli-ready-fn nil))
+    (should (ai-code-cli-session-ready-p "/some/dir"))))
+
+(ert-deftest ai-code-test-session-ready-p-calls-ready-fn-with-dir ()
+  "ai-code-cli-session-ready-p forwards DIR to the backend's :ready predicate."
+  (let* ((received-dir nil)
+         (ai-code--cli-ready-fn (lambda (dir) (setq received-dir dir) t)))
+    (ai-code-cli-session-ready-p "/my/worktree")
+    (should (string= received-dir "/my/worktree"))))
+
+(ert-deftest ai-code-test-session-ready-p-returns-predicate-result ()
+  "ai-code-cli-session-ready-p propagates the predicate's return value."
+  (let ((ai-code--cli-ready-fn (lambda (_dir) nil)))
+    (should-not (ai-code-cli-session-ready-p "/some/dir")))
+  (let ((ai-code--cli-ready-fn (lambda (_dir) t)))
+    (should (ai-code-cli-session-ready-p "/some/dir"))))
+
+(ert-deftest ai-code-test-apply-backend-sets-ready-fn ()
+  ":ready in a backend plist is wired into ai-code--cli-ready-fn."
+  (let* ((backend-key 'test-ready-backend)
+         (ai-code-backends `((,backend-key
+                              :label "Test Ready Backend"
+                              :start ai-code-test-ready-start
+                              :switch ai-code-test-ready-switch
+                              :send ai-code-test-ready-send
+                              :ready ai-code-test-ready-predicate
+                              :resume nil
+                              :cli "test")))
+         (saved-start ai-code--cli-start-fn)
+         (saved-switch ai-code--cli-switch-fn)
+         (saved-send ai-code--cli-send-fn)
+         (saved-resume ai-code--cli-resume-fn)
+         (saved-ready ai-code--cli-ready-fn)
+         (saved-backend ai-code-selected-backend)
+         (saved-cli (and (boundp 'ai-code-cli) ai-code-cli)))
+    (cl-letf (((symbol-function 'ai-code-test-ready-start) #'ignore)
+              ((symbol-function 'ai-code-test-ready-switch) #'ignore)
+              ((symbol-function 'ai-code-test-ready-send) #'ignore)
+              ((symbol-function 'ai-code-test-ready-predicate) (lambda (_dir) t))
+              ((symbol-function 'message) #'ignore))
+      (unwind-protect
+          (progn
+            (ai-code--apply-backend backend-key)
+            (should (eq ai-code--cli-ready-fn 'ai-code-test-ready-predicate)))
+        (setq ai-code--cli-start-fn saved-start
+              ai-code--cli-switch-fn saved-switch
+              ai-code--cli-send-fn saved-send
+              ai-code--cli-resume-fn saved-resume
+              ai-code--cli-ready-fn saved-ready
+              ai-code-selected-backend saved-backend
+              ai-code-cli saved-cli)))))
+
+(ert-deftest ai-code-test-apply-backend-clears-ready-fn-for-no-ready-backends ()
+  "Switching to a backend without :ready resets ai-code--cli-ready-fn to nil."
+  (let* ((backend-key 'test-no-ready-backend)
+         (ai-code-backends `((,backend-key
+                              :label "Test No-Ready Backend"
+                              :start ai-code-test-noready-start
+                              :switch ai-code-test-noready-switch
+                              :send ai-code-test-noready-send
+                              :resume nil
+                              :cli "test")))
+         (saved-start ai-code--cli-start-fn)
+         (saved-switch ai-code--cli-switch-fn)
+         (saved-send ai-code--cli-send-fn)
+         (saved-resume ai-code--cli-resume-fn)
+         (saved-ready ai-code--cli-ready-fn)
+         (saved-backend ai-code-selected-backend)
+         (saved-cli (and (boundp 'ai-code-cli) ai-code-cli)))
+    (cl-letf (((symbol-function 'ai-code-test-noready-start) #'ignore)
+              ((symbol-function 'ai-code-test-noready-switch) #'ignore)
+              ((symbol-function 'ai-code-test-noready-send) #'ignore)
+              ((symbol-function 'message) #'ignore))
+      (unwind-protect
+          (progn
+            (setq ai-code--cli-ready-fn #'ignore)
+            (ai-code--apply-backend backend-key)
+            (should-not ai-code--cli-ready-fn))
+        (setq ai-code--cli-start-fn saved-start
+              ai-code--cli-switch-fn saved-switch
+              ai-code--cli-send-fn saved-send
+              ai-code--cli-resume-fn saved-resume
+              ai-code--cli-ready-fn saved-ready
+              ai-code-selected-backend saved-backend
+              ai-code-cli saved-cli)))))
+
+(ert-deftest ai-code-test-claude-code-ide-backend-has-ready-slot ()
+  "claude-code-ide backend spec declares the :ready predicate."
+  (let ((spec (ai-code--backend-spec 'claude-code-ide)))
+    (should spec)
+    (should (eq (plist-get (cdr spec) :ready)
+                'ai-code--claude-code-ide-session-ready-p))))
 
 (provide 'test_ai-code-backends)
 
