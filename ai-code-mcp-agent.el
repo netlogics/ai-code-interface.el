@@ -18,7 +18,7 @@
   :group 'tools
   :prefix "ai-code-mcp-agent-")
 
-(defcustom ai-code-mcp-agent-enabled-backends '(codex github-copilot-cli claude-code)
+(defcustom ai-code-mcp-agent-enabled-backends '(codex open-interpreter github-copilot-cli claude-code)
   "Backends that should receive automatic Emacs MCP integration."
   :type '(repeat symbol)
   :group 'ai-code-mcp-agent)
@@ -102,6 +102,13 @@
   "Inject MCP config for BACKEND into COMMAND for URL."
   (pcase backend
     ('codex
+     (concat command
+             " -c "
+             (shell-quote-argument
+              (format "mcp_servers.%s={ url = %s }"
+                      ai-code-mcp-agent--server-name
+                      (json-encode url)))))
+    ('open-interpreter
      (concat command
              " -c "
              (shell-quote-argument

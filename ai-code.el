@@ -33,6 +33,7 @@
 ;;   - Grok CLI
 ;;   - Cursor CLI
 ;;   - Kiro CLI
+;;   - Open Interpreter CLI (Codex-compatible)
 ;;   - CodeBuddy Code CLI
 ;;   - Aider CLI
 ;;   - agent-shell

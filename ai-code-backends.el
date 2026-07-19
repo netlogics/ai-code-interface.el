@@ -265,6 +265,18 @@ so the CLI itself handles the installation details."
      :upgrade "npm install -g @openai/codex@latest"
      :install-skills nil
      :cli     "codex")
+    (open-interpreter
+     :label "Open Interpreter CLI"
+     :require ai-code-open-interpreter-cli
+     :start   ai-code-open-interpreter-cli
+     :switch  ai-code-open-interpreter-cli-switch-to-buffer
+     :send    ai-code-open-interpreter-cli-send-command
+     :resume  ai-code-open-interpreter-cli-resume
+     :config  "~/.codex/config.toml"
+     :agent-file "AGENTS.md"
+     :upgrade nil
+     :install-skills nil
+     :cli     "open-interpreter")
     (opencode
      :label "Opencode"
      :require ai-code-opencode
