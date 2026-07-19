@@ -529,13 +529,14 @@ To transfer development work between different AI coding backends (e.g., from Co
 **** Open Interpreter CLI setup
      [[https://github.com/openinterpreter/openinterpreter][Open Interpreter CLI]] is treated as a Codex-compatible CLI. It can be installed with:
      =curl -fsSL https://www.openinterpreter.com/install | sh=
-     Ensure the `open-interpreter` executable is on your PATH.
+     Ensure the `interpreter` executable is on your PATH.
      Customize `ai-code-open-interpreter-cli-program` or `ai-code-open-interpreter-cli-program-switches` if needed.
+     The backend config command opens =~/.openinterpreter/config.toml=.
      Then select the backend:
      #+begin_src emacs-lisp
      (ai-code-set-backend 'open-interpreter)
      #+end_src
-     Resume appends =resume= the same way as Codex.
+     Resume runs =interpreter resume --last= to reopen the most recent session.
 
    You can add other backends by customizing the `ai-code-backends` variable.
 

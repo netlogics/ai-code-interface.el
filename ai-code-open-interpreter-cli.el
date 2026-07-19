@@ -19,7 +19,7 @@
   :group 'tools
   :prefix "ai-code-open-interpreter-cli-")
 
-(defcustom ai-code-open-interpreter-cli-program "open-interpreter"
+(defcustom ai-code-open-interpreter-cli-program "interpreter"
   "Path to the Open Interpreter CLI executable."
   :type 'string
   :group 'ai-code-open-interpreter-cli)

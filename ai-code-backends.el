@@ -272,11 +272,11 @@ so the CLI itself handles the installation details."
      :switch  ai-code-open-interpreter-cli-switch-to-buffer
      :send    ai-code-open-interpreter-cli-send-command
      :resume  ai-code-open-interpreter-cli-resume
-     :config  "~/.codex/config.toml"
+     :config  "~/.openinterpreter/config.toml"
      :agent-file "AGENTS.md"
      :upgrade nil
      :install-skills nil
-     :cli     "open-interpreter")
+     :cli     "interpreter")
     (opencode
      :label "Opencode"
      :require ai-code-opencode

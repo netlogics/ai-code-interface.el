@@ -328,6 +328,15 @@ When called from Lisp code, sends CMD directly without prompting.
            :agent-file "AGENTS.md" :upgrade
            "npm install -g @openai/codex@latest" :install-skills nil
            :cli "codex")
+    (open-interpreter :label "Open Interpreter CLI" :require
+                      ai-code-open-interpreter-cli :start
+                      ai-code-open-interpreter-cli :switch
+                      ai-code-open-interpreter-cli-switch-to-buffer
+                      :send ai-code-open-interpreter-cli-send-command
+                      :resume ai-code-open-interpreter-cli-resume
+                      :config "~/.openinterpreter/config.toml"
+                      :agent-file "AGENTS.md" :upgrade nil
+                      :install-skills nil :cli "interpreter")
     (opencode :label "Opencode" :require ai-code-opencode :start
               ai-code-opencode :switch ai-code-opencode-switch-to-buffer
               :send ai-code-opencode-send-command :resume
@@ -1220,6 +1229,32 @@ prompt for the project directory.
 (register-definition-prefixes "ai-code-mcp-debug-tools" '("ai-code-mcp-"))
 
 
+;;; Generated autoloads from ai-code-open-interpreter-cli.el
+
+(autoload 'ai-code-open-interpreter-cli "ai-code-open-interpreter-cli" "\
+Start Open Interpreter using `ai-code-backends-infra' logic.
+With prefix ARG, prompt for CLI args using
+`ai-code-open-interpreter-cli-program-switches' as the default input.
+
+(fn &optional ARG)" t)
+(autoload 'ai-code-open-interpreter-cli-switch-to-buffer "ai-code-open-interpreter-cli" "\
+Switch to the Open Interpreter CLI buffer.
+When FORCE-PROMPT is non-nil, prompt to select a session.
+
+(fn &optional FORCE-PROMPT)" t)
+(autoload 'ai-code-open-interpreter-cli-send-command "ai-code-open-interpreter-cli" "\
+Send LINE to Open Interpreter CLI.
+
+(fn LINE)" t)
+(autoload 'ai-code-open-interpreter-cli-send-escape "ai-code-open-interpreter-cli" "\
+Send escape key to Open Interpreter CLI." t)
+(autoload 'ai-code-open-interpreter-cli-resume "ai-code-open-interpreter-cli" "\
+Resume a previous Open Interpreter CLI session.
+Argument ARG is passed to the start command.
+
+(fn &optional ARG)" t)
+(register-definition-prefixes "ai-code-open-interpreter-cli" '("ai-code-open-interpreter-cli-"))
+
 
 ;;; End of scraped data
 
